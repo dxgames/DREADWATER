@@ -1,32 +1,63 @@
-body { margin: 0; overflow: hidden; background-color: #2c3e50; touch-action: none; font-family: 'Courier New', monospace; }
+body { margin: 0; overflow: hidden; background-color: #2c3e50; touch-action: none; font-family: 'Courier New', monospace; user-select: none; }
 canvas { display: block; background-color: #3498db; image-rendering: pixelated; }
+
+/* === INTERFAZ GENÉRICA === */
 .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.85); z-index: 100; }
 .visible { display: flex !important; pointer-events: auto !important; }
+
+/* === MENÚS === */
 #main-menu, #settings-menu, #about-menu { background: rgba(0,0,0,0.6); z-index: 200; }
 #map-screen { background: rgba(15, 25, 35, 0.95); z-index: 150; pointer-events: auto !important; }
+
+/* === TÍTULO === */
 .game-title-img { width: 85%; max-width: 550px; height: auto; margin-bottom: 20px; animation: floatTitle 3s ease-in-out infinite; filter: drop-shadow(0px 5px 0px rgba(0,0,0,0.5)); }
 @keyframes floatTitle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+/* === BOTONES MENÚ === */
 .menu-btn { background: #2c3e50; color: #f1c40f; border: 2px solid #f1c40f; padding: 15px 40px; font-size: 20px; margin: 10px; cursor: pointer; font-family: 'Courier New', monospace; font-weight: bold; width: 250px; box-shadow: 0 4px 0 #000; text-transform: uppercase; }
 .menu-btn:active { transform: translateY(4px); box-shadow: none; }
 .btn-play { background: #27ae60; border-color: #2ecc71; color: white; transform: scale(1.1); margin-bottom: 20px; }
+
+/* === TEXTOS === */
 .about-text { color: white; text-align: center; font-size: 18px; line-height: 1.6; margin-bottom: 20px; text-shadow: 2px 2px 0 black; }
 .highlight { color: #f1c40f; font-weight: bold; }
-.controls-layer { position: absolute; bottom: 10px; width: 100%; height: 140px; pointer-events: none; display: none; justify-content: space-between; padding: 0 10px; box-sizing: border-box; z-index: 10; }
-.control-group { pointer-events: auto; display: flex; gap: 10px; align-items: flex-end; }
-.btn { width: 65px; height: 65px; background-color: rgba(0, 0, 0, 0.4); border: 2px solid rgba(255, 255, 255, 0.6); border-radius: 50%; color: white; font-size: 28px; display: flex; justify-content: center; align-items: center; user-select: none; -webkit-user-select: none; touch-action: none; transition: transform 0.1s; }
+h2 { color: #f1c40f; text-align: center; margin: 0 0 15px 0; text-shadow: 2px 2px 0 #000; text-transform: uppercase; }
+
+/* === CONTROLES IN-GAME === */
+.controls-layer { 
+    position: absolute; bottom: 20px; width: 100%; height: auto; 
+    pointer-events: none; display: none; justify-content: space-between; 
+    padding: 0 20px; box-sizing: border-box; z-index: 10; align-items: flex-end; 
+}
+
+.control-group-stack { pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 15px; }
+.control-group { display: flex; gap: 15px; }
+.fire-controls { display: none; flex-direction: column; align-items: center; gap: 5px; pointer-events: auto; }
+
+/* BOTONES REDONDOS */
+.btn { width: 65px; height: 65px; background-color: rgba(0, 0, 0, 0.4); border: 2px solid rgba(255, 255, 255, 0.6); border-radius: 50%; color: white; font-size: 28px; display: flex; justify-content: center; align-items: center; touch-action: none; transition: transform 0.1s; }
 .btn:active { background-color: rgba(255, 255, 255, 0.3); transform: scale(0.95); }
-.fire-controls { display: none; flex-direction: column; gap: 8px; } 
-.btn-fire { width: 70px; height: 50px; border-radius: 12px; background-color: rgba(192, 57, 43, 0.9); border-color: #e74c3c; font-size: 20px; }
+
+/* BOTONES CAÑONES */
+.btn-fire { width: 60px; height: 50px; border-radius: 12px; background-color: rgba(192, 57, 43, 0.9); border-color: #e74c3c; font-size: 20px; }
+
 #btn-anchor { background-color: rgba(41, 128, 185, 0.6); }
 #btn-anchor.sailing { background-color: rgba(46, 204, 113, 0.6); border-color: #2ecc71; }
-#action-btn { position: absolute; top: 30%; left: 50%; transform: translateX(-50%); background: #f1c40f; color: #000; padding: 10px 20px; border: 3px solid #fff; border-radius: 8px; font-weight: bold; font-size: 18px; display: none; pointer-events: auto; z-index: 50; box-shadow: 0 4px 0 #b7950b; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
+
+/* === BOTÓN ACCIÓN CENTRAL === */
+#action-btn { position: absolute; top: 30%; left: 50%; transform: translateX(-50%); background: #f1c40f; color: #000; padding: 12px 25px; border: 3px solid #fff; border-radius: 8px; font-weight: bold; font-size: 20px; display: none; pointer-events: auto; z-index: 50; box-shadow: 0 4px 0 #b7950b; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
+
+/* === PUERTO Y MODALES === */
 #port-menu { background: #2c3e50; border: 4px solid #8e44ad; padding: 15px; border-radius: 10px; width: 90%; max-width: 400px; box-shadow: 0 0 20px black; color: white; }
-h2 { color: #f1c40f; text-align: center; margin: 0 0 15px 0; text-shadow: 2px 2px 0 #000; text-transform: uppercase; }
 .port-option { background: #34495e; color: #bdc3c7; border: 1px solid #7f8c8d; padding: 10px; margin: 6px 0; text-align: left; display: flex; justify-content: space-between; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 13px; }
 .npc-text { font-style: italic; color: #f39c12; margin-bottom: 10px; min-height: 40px; text-align: center; padding: 5px; font-size: 14px; }
 #dialog-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2c3e50; border: 2px solid #f1c40f; padding: 20px; border-radius: 10px; color: white; z-index: 300; display: none; text-align: center; width: 80%; }
+
+/* === MENSAJES FLOTANTES === */
 #msg-area { position: absolute; top: 15%; width: 100%; text-align: center; pointer-events: none; z-index: 60; }
-.pop-msg { font-size: 22px; font-weight: bold; color: white; text-shadow: 2px 2px 0 #000; animation: fadeUp 2.5s forwards; margin-bottom: 5px; }
+.pop-msg { font-size: 24px; font-weight: bold; color: white; text-shadow: 2px 2px 0 #000; animation: fadeUp 2.5s forwards; margin-bottom: 5px; }
 @keyframes fadeUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
+
+/* === RESULTADOS === */
 .result-content { text-align: center; color: white; }
 .btn-ui { background: #d35400; color: white; border: 2px solid #fff; padding: 15px 40px; font-size: 18px; margin-top: 20px; cursor: pointer; border-radius: 5px; font-weight: bold; }

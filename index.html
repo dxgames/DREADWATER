@@ -5,11 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <meta property="og:title" content="DREADWATER - DX GAMES">
-    <meta property="og:description" content="Zarpa hacia el abismo. v1.2 Final Fix">
+    <meta property="og:description" content="Zarpa hacia el abismo. v1.2.5 Final">
+    
+    <meta property="og:image" content="https://i.postimg.cc/2jwwXnQ4/previsualizacion.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://i.postimg.cc/2jwwXnQ4/previsualizacion.jpg">
+
     <link rel="icon" href="https://i.postimg.cc/RVSkpKDN/Icono.png" type="image/png">
     <link rel="apple-touch-icon" href="https://i.postimg.cc/RVSkpKDN/Icono.png">
 
-    <title>DREADWATER v1.2 - DX GAMES</title>
+    <title>DREADWATER v1.2.5 - DX GAMES</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -43,7 +50,7 @@
     <h2 style="font-size: 30px;">ACERCA DE</h2>
     <div class="about-text">
         Creado por <span class="highlight">DX GAMES</span><br><br>
-        Versión: <span class="highlight">v1.2</span><br><br>
+        Versión: <span class="highlight">v1.2.5</span><br><br>
         ¡GRACIAS POR JUGAR!
     </div>
     <button class="menu-btn" onclick="showMain()">VOLVER</button>
@@ -56,17 +63,26 @@
 </div>
 
 <div class="controls-layer" id="game-controls">
-    <div class="control-group">
-        <div class="btn" id="btn-left">⬅️</div>
-        <div class="btn" id="btn-right">➡️</div>
-    </div>
-    <div class="control-group">
+    
+    <div class="control-group-stack">
         <div class="btn" id="btn-anchor">⚓</div>
-        <div class="fire-controls" id="fire-controls">
+        <div class="control-group">
+            <div class="btn" id="btn-left">⬅️</div>
+            <div class="btn" id="btn-right">➡️</div>
+        </div>
+    </div>
+
+    <div class="fire-controls" id="fire-controls">
+        <div class="btn btn-fire" id="btn-shoot-f" style="visibility:hidden">⬆️💣</div>
+        
+        <div style="display:flex; gap:10px;">
             <div class="btn btn-fire" id="btn-shoot-l">⬅️💣</div>
             <div class="btn btn-fire" id="btn-shoot-r">💣➡️</div>
         </div>
+        
+        <div class="btn btn-fire" id="btn-shoot-b" style="visibility:hidden">⬇️💣</div>
     </div>
+
 </div>
 
 <div id="port-screen" class="ui-layer">
