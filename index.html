@@ -5,110 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <meta property="og:title" content="DREADWATER - DX GAMES">
-    <meta property="og:description" content="Zarpa hacia el abismo en DREADWATER. Navegación infinita, combates navales tácticos y tesoros malditos. ¿Podrás sobrevivir al Barco Fantasma? Una producción original de DX GAMES.">
-    <meta property="og:image" content="https://i.postimg.cc/2jwwXnQ4/previsualizacion.jpg">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:type" content="website">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="DREADWATER - DX GAMES">
-    <meta name="twitter:description" content="Sobrevive en mares infinitos. Combate, explora y conquista. Juega gratis ahora.">
-    <meta name="twitter:image" content="https://i.postimg.cc/2jwwXnQ4/previsualizacion.jpg">
+    <meta property="og:description" content="Zarpa hacia el abismo. v1.2 Final Fix">
+    <link rel="icon" href="https://i.postimg.cc/RVSkpKDN/Icono.png" type="image/png">
+    <link rel="apple-touch-icon" href="https://i.postimg.cc/RVSkpKDN/Icono.png">
 
     <title>DREADWATER v1.2 - DX GAMES</title>
-    <style>
-        body { margin: 0; overflow: hidden; background-color: #2c3e50; touch-action: none; font-family: 'Courier New', monospace; }
-        canvas { display: block; background-color: #3498db; image-rendering: pixelated; }
-
-        /* UI LAYER GENERICA */
-        .ui-layer { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            pointer-events: none; display: none; flex-direction: column; 
-            justify-content: center; align-items: center; background: rgba(0,0,0,0.4); z-index: 100; 
-        }
-        .visible { display: flex !important; pointer-events: auto !important; }
-
-        /* MENÚ PRINCIPAL */
-        #main-menu, #settings-menu, #about-menu { background: rgba(0,0,0,0.3); z-index: 200; }
-        
-        /* IMAGEN DEL TÍTULO */
-        .game-title-img {
-            width: 85%; /* Se adapta al ancho de pantalla */
-            max-width: 550px; /* No crece demasiado en PC */
-            height: auto;
-            margin-bottom: 20px;
-            animation: floatTitle 3s ease-in-out infinite;
-            filter: drop-shadow(0px 5px 0px rgba(0,0,0,0.5));
-        }
-        @keyframes floatTitle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-
-        .menu-btn {
-            background: #2c3e50; color: #f1c40f; border: 2px solid #f1c40f;
-            padding: 15px 40px; font-size: 20px; margin: 10px; cursor: pointer;
-            font-family: 'Courier New', monospace; font-weight: bold; width: 250px;
-            box-shadow: 0 4px 0 #000; text-transform: uppercase;
-        }
-        .menu-btn:active { transform: translateY(4px); box-shadow: none; }
-        .btn-play { background: #27ae60; border-color: #2ecc71; color: white; transform: scale(1.1); margin-bottom: 20px; }
-
-        .about-text { color: white; text-align: center; font-size: 18px; line-height: 1.6; margin-bottom: 20px; text-shadow: 2px 2px 0 black; }
-        .highlight { color: #f1c40f; font-weight: bold; }
-
-        /* CONTROLES JUEGO */
-        .controls-layer {
-            position: absolute; bottom: 10px; width: 100%; height: 140px;
-            pointer-events: none; display: none; justify-content: space-between; padding: 0 10px; box-sizing: border-box; z-index: 10;
-        }
-        .control-group { pointer-events: auto; display: flex; gap: 10px; align-items: flex-end; }
-        .btn {
-            width: 65px; height: 65px; background-color: rgba(0, 0, 0, 0.4);
-            border: 2px solid rgba(255, 255, 255, 0.6); border-radius: 50%;
-            color: white; font-size: 28px; display: flex; justify-content: center; align-items: center;
-            user-select: none; -webkit-user-select: none; touch-action: none; transition: transform 0.1s;
-        }
-        .btn:active { background-color: rgba(255, 255, 255, 0.3); transform: scale(0.95); }
-        
-        .fire-controls { display: none; flex-direction: column; gap: 8px; } 
-        .btn-fire { 
-            width: 70px; height: 50px; border-radius: 12px; 
-            background-color: rgba(192, 57, 43, 0.9); border-color: #e74c3c; font-size: 20px;
-        }
-        .btn-fire.reloading { background-color: #7f8c8d; border-color: #95a5a6; opacity: 0.6; pointer-events: none; }
-        
-        #btn-anchor { background-color: rgba(41, 128, 185, 0.6); }
-        #btn-anchor.sailing { background-color: rgba(46, 204, 113, 0.6); border-color: #2ecc71; }
-
-        #action-btn {
-            position: absolute; top: 30%; left: 50%; transform: translateX(-50%);
-            background: #f1c40f; color: #000; padding: 10px 20px; border: 3px solid #fff; border-radius: 8px;
-            font-weight: bold; font-size: 18px; display: none; pointer-events: auto; z-index: 50;
-            box-shadow: 0 4px 0 #b7950b; text-transform: uppercase; cursor: pointer; white-space: nowrap;
-        }
-
-        #port-menu { 
-            background: #2c3e50; border: 4px solid #8e44ad; padding: 15px; border-radius: 10px; width: 90%; max-width: 380px; 
-            box-shadow: 0 0 20px black; color: white;
-        }
-        h2 { color: #f1c40f; text-align: center; margin: 0 0 15px 0; text-shadow: 2px 2px 0 #000; text-transform: uppercase; }
-        .port-option { 
-            background: #34495e; color: #bdc3c7; border: 1px solid #7f8c8d; padding: 12px; 
-            margin: 8px 0; text-align: left; display: flex; justify-content: space-between; border-radius: 5px; font-weight: bold; cursor: pointer;
-        }
-        .npc-text { font-style: italic; color: #f39c12; margin-bottom: 10px; min-height: 50px; text-align: center; padding: 5px; }
-
-        #msg-area { position: absolute; top: 15%; width: 100%; text-align: center; pointer-events: none; z-index: 60; }
-        .pop-msg { font-size: 22px; font-weight: bold; color: white; text-shadow: 2px 2px 0 #000; animation: fadeUp 2.5s forwards; margin-bottom: 5px; }
-        @keyframes fadeUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
-
-        .result-content { text-align: center; color: white; }
-        .btn-ui { background: #d35400; color: white; border: 2px solid #fff; padding: 15px 40px; font-size: 18px; margin-top: 20px; cursor: pointer; border-radius: 5px; font-weight: bold; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <canvas id="gameCanvas"></canvas>
 <div id="msg-area"></div>
 <button id="action-btn">ACCIÓN</button>
+
+<div id="dialog-modal">
+    <div id="dialog-text" style="margin-bottom: 20px; font-style: italic;"></div>
+    <button class="btn-ui" style="padding: 5px 20px; font-size: 14px;" onclick="closeDialog()">Cerrar</button>
+</div>
 
 <div id="main-menu" class="ui-layer visible">
     <img src="https://i.postimg.cc/CLxZMqWv/Titulo.png" class="game-title-img" alt="DREADWATER">
@@ -119,7 +32,10 @@
 
 <div id="settings-menu" class="ui-layer">
     <h2 style="font-size: 30px;">AJUSTES</h2>
-    <button class="menu-btn" id="btn-vibrate" onclick="toggleVibrate()">VIBRACIÓN: ON</button>
+    <button class="menu-btn" id="btn-music" onclick="toggleSetting('music')">MÚSICA: ON</button>
+    <button class="menu-btn" id="btn-ambient" onclick="toggleSetting('ambient')">AMBIENTE: ON</button>
+    <button class="menu-btn" id="btn-sound" onclick="toggleSetting('sound')">SONIDO: ON</button>
+    <button class="menu-btn" id="btn-vibrate" onclick="toggleSetting('vibrate')">VIBRACIÓN: ON</button>
     <button class="menu-btn" onclick="showMain()">VOLVER</button>
 </div>
 
@@ -131,6 +47,12 @@
         ¡GRACIAS POR JUGAR!
     </div>
     <button class="menu-btn" onclick="showMain()">VOLVER</button>
+</div>
+
+<div id="map-screen" class="ui-layer" onclick="if(event.target === this) closeMap()">
+    <h2 style="margin-top:20px; color:#f1c40f;">MAPA DE NAVEGACIÓN</h2>
+    <canvas id="mapCanvas" style="border: 2px solid #f1c40f; background: #000; margin: 10px; touch-action: none;"></canvas>
+    <div style="color:white; font-size:14px; pointer-events:none;">Toca el fondo oscuro para cerrar</div>
 </div>
 
 <div class="controls-layer" id="game-controls">
@@ -162,324 +84,6 @@
     </div>
 </div>
 
-<script>
-// === MOTOR ===
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const CX = () => canvas.width / 2;
-const CY = () => canvas.height / 2;
-function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-window.addEventListener('resize', resize);
-resize();
-
-// === ASSETS ===
-const sprites = {};
-function loadImages() {
-    const assets = {
-        player: "https://i.postimg.cc/4NZgwxFn/barco_jugador.png",
-        shipSmall: "https://i.postimg.cc/ZKZSj5D4/barco_chico.png",
-        shipMed: "https://i.postimg.cc/02fq41Lv/barco_mediano.png",
-        shipBig: "https://i.postimg.cc/8PHVYgqp/barco_grande.png",
-        hunter: "https://i.postimg.cc/rFJLH2vR/perseguidor.png",
-        ghost: "https://i.postimg.cc/pLLtb1Hz/barco_fantasma.png",
-        rock: "https://i.postimg.cc/4dtg2kQD/isla_de_rocas.png",
-        island: "https://i.postimg.cc/qRnTDVGf/isla.png",
-        portHome: "https://i.postimg.cc/k5LCyXK4/isla_desesperanza.png",
-        portNormal: "https://i.postimg.cc/d1dYNPjf/puertos.png",
-        portBig: "https://i.postimg.cc/Px1gzbd6/puerto_grande.png",
-        minimap: "https://i.postimg.cc/N0FmWYF3/Minimapa.png"
-    };
-    for(let key in assets) { sprites[key] = new Image(); sprites[key].src = assets[key]; }
-}
-loadImages();
-
-// === CONFIGURACIÓN Y ESTADOS ===
-const STATE = { MENU: 0, ROAMING: 1, BATTLE: 2, PORT: 3, SINKING: 4 };
-let gameState = STATE.MENU;
-let gameTime = 0;
-let settings = { vibration: true }; 
-
-const player = {
-    gX: 180, gY: 0, angle: Math.PI / 2, speed: 0, 
-    maxSpeed: 2.2, accel: 0.05,
-    hp: 100, maxHp: 100, isSailing: false, savedPos: {x:0, y:0}, 
-    inventory: { gold: 50, rum: 2 }, reloadTimer: 0, maxReload: 60, hasMap: false
-};
-
-const portNames = ["Pto. del Ahogado", "Cala Feliz", "Isla Tortuga", "Refugio Pirata", "Bahía Sucia", "Punta Sangrienta", "Cala Viuda", "Port Royal", "Abismo Negro", "Roca del Ron", "Cala del Loro", "Bahía Botín", "Puerto Huesos", "Isla de la Sed", "Paso Muerte", "Cala Fortuna", "Pto. Calavera", "Bahía Tormenta", "Isla Olvidada", "Puerto Extreme"];
-const ports = [];
-for(let i=0; i<20; i++) {
-    ports.push({
-        name: i === 0 ? "Desesperanza" : portNames[i],
-        x: i === 0 ? 0 : (Math.random()-0.5) * 270000,
-        y: i === 0 ? 0 : (Math.random()-0.5) * 270000,
-        radius: 110,
-        type: i === 0 ? 'home' : (Math.random() > 0.8 ? 'big' : 'normal')
-    });
-}
-
-const TAVERN_QUOTES = ["¿Rumores o ron?", "El Barco Fantasma acecha...", "DX GAMES manda.", "¡Salud, capitán!", "¿Viste ese barco negro al sur?"];
-let enemies = [], rocks = [], islands = [], projectiles = [], wakeParticles = [], explosions = []; 
-let battleEnemy = null, sinkingEnemy = null, treasureLoc = { x: 0, y: 0, active: false };
-
-// Olas
-const waves = [];
-for(let i=0; i<60; i++) waves.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, offset: Math.random() * 100, speed: 0.5 + Math.random() * 0.5 });
-
-const keys = { Left: false, Right: false };
-const ui = {
-    mainMenu: document.getElementById('main-menu'),
-    settingsMenu: document.getElementById('settings-menu'),
-    aboutMenu: document.getElementById('about-menu'),
-    actionBtn: document.getElementById('action-btn'),
-    portScreen: document.getElementById('port-screen'),
-    controls: document.getElementById('game-controls'),
-    fireControls: document.getElementById('fire-controls'),
-    btnShootL: document.getElementById('btn-shoot-l'),
-    btnShootR: document.getElementById('btn-shoot-r'),
-    anchorBtn: document.getElementById('btn-anchor'),
-    resultScreen: document.getElementById('result-screen'),
-    portContent: document.getElementById('port-content'),
-    portTitle: document.getElementById('port-title')
-};
-
-// === FUNCIONES MENÚ ===
-function startGame() { hideAllMenus(); ui.controls.style.display = 'flex'; gameState = STATE.ROAMING; showMsg("¡DREADWATER TE ESPERA!", "#f1c40f"); }
-function showSettings() { hideAllMenus(); ui.settingsMenu.classList.add('visible'); }
-function showAbout() { hideAllMenus(); ui.aboutMenu.classList.add('visible'); }
-function showMain() { hideAllMenus(); ui.mainMenu.classList.add('visible'); }
-function hideAllMenus() { ui.mainMenu.classList.remove('visible'); ui.settingsMenu.classList.remove('visible'); ui.aboutMenu.classList.remove('visible'); }
-
-function toggleVibrate() {
-    settings.vibration = !settings.vibration;
-    document.getElementById('btn-vibrate').innerText = `VIBRACIÓN: ${settings.vibration ? 'ON' : 'OFF'}`;
-    if(settings.vibration) navigator.vibrate(50);
-}
-function vibrate(ms) { if(settings.vibration) navigator.vibrate(ms); }
-
-// === UTILS ===
-function dist(x1, y1, x2, y2) { return Math.sqrt((x2-x1)**2 + (y2-y1)**2); }
-function showMsg(text, color) {
-    const el = document.createElement('div'); el.className = 'pop-msg'; el.innerText = text; el.style.color = color || 'white';
-    document.getElementById('msg-area').appendChild(el); setTimeout(() => el.remove(), 2500);
-}
-function spawnExplosion(x, y, color) {
-    for(let i=0; i<10; i++) explosions.push({ x: x, y: y, vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5, size: Math.floor(Math.random()*5+3), life: 1.0, color: color || '#e67e22' });
-}
-
-function updateProceduralSpawns() {
-    if (gameState !== STATE.ROAMING) return;
-    if (enemies.length < 8) {
-        const a = Math.random() * Math.PI * 2; const d = 1800;
-        const type = Math.random() < 0.001 ? 'ghost' : (player.inventory.gold >= 1000 && Math.random() < 0.05 ? 'hunter' : 'normal');
-        const size = type === 'ghost' ? 35 : (type === 'hunter' ? 25 : Math.floor(Math.random()*10+18));
-        enemies.push({ x: player.gX+Math.cos(a)*d, y: player.gY+Math.sin(a)*d, angle: Math.random()*Math.PI*2, speed: 0.8+Math.random()*0.5, hp: size*3, maxHp: size*3, size: size, type: type, id: Math.random(), reload: 60 });
-    }
-    if (rocks.length < 12) { const a = Math.random()*Math.PI*2; rocks.push({ x: player.gX+Math.cos(a)*1500, y: player.gY+Math.sin(a)*1500, size: 50 }); }
-    if (islands.length < 4) { const a = Math.random()*Math.PI*2; islands.push({ x: player.gX+Math.cos(a)*2500, y: player.gY+Math.sin(a)*2500, radius: 80 }); }
-    
-    enemies = enemies.filter(e => dist(player.gX, player.gY, e.x, e.y) < 5000);
-    rocks = rocks.filter(r => dist(player.gX, player.gY, r.x, r.y) < 4000);
-    islands = islands.filter(i => dist(player.gX, player.gY, i.x, i.y) < 6000);
-}
-
-// === BATALLA ===
-function startBattle(enemyRef) {
-    player.savedPos = { x: player.gX, y: player.gY }; gameState = STATE.BATTLE;
-    player.gX = 50000; player.gY = 50000; player.angle = 0; player.speed = 0;
-    player.isSailing = false; ui.anchorBtn.classList.remove('sailing'); ui.actionBtn.style.display = 'none';
-    projectiles = []; sinkingEnemy = null;
-    battleEnemy = { ...enemyRef, x: 50000, y: 49600, angle: Math.PI, isBattleEnemy: true, reload: 60 };
-    enemies = [battleEnemy]; ui.fireControls.style.display = 'flex'; showMsg("¡A LAS ARMAS!", "#e74c3c");
-}
-
-function triggerSinking(win) {
-    if(win) {
-        gameState = STATE.SINKING; ui.fireControls.style.display = 'none';
-        sinkingEnemy = { ...battleEnemy, alpha: 1.0, scale: 1.0 }; 
-        battleEnemy = null; enemies = [];
-        spawnExplosion(sinkingEnemy.x, sinkingEnemy.y, '#e74c3c'); 
-        if(Math.random() < 0.02 && !player.hasMap) {
-            player.hasMap = true;
-            treasureLoc = { x: player.savedPos.x + (Math.random()-0.5)*100000, y: player.savedPos.y + (Math.random()-0.5)*100000, active: true };
-            showMsg("¡MAPA ENCONTRADO!", "#9b59b6");
-        }
-        setTimeout(() => endBattle(true, false), 3000);
-    } else endBattle(false, false);
-}
-
-function endBattle(win, escaped, whoEscaped) {
-    gameState = STATE.PORT; ui.controls.style.display = 'none'; ui.fireControls.style.display = 'none';
-    ui.resultScreen.classList.add('visible');
-    const title = document.getElementById('result-title'); const loot = document.getElementById('result-loot');
-    const btn = document.getElementById('btn-continue');
-    
-    if (escaped) {
-        title.innerText = "FIN DEL COMBATE"; title.style.color = "#3498db";
-        loot.innerHTML = whoEscaped === 'player' ? "HAS ESCAPADO CON VIDA" : "EL ENEMIGO ESCAPÓ";
-        btn.onclick = () => { player.gX = player.savedPos.x; player.gY = player.savedPos.y; enemies = []; rocks = []; islands = []; sinkingEnemy = null; gameState = STATE.ROAMING; ui.resultScreen.classList.remove('visible'); ui.controls.style.display = 'flex'; };
-    } else if (win) {
-        title.innerText = "¡VICTORIA!"; title.style.color = "#f1c40f";
-        const g = Math.floor(Math.random()*60+40); const r = Math.floor(Math.random()*2+1);
-        player.inventory.gold += g; player.inventory.rum += r; loot.innerHTML = `Botín:<br>💰 ${g} Oro<br>🍾 ${r} Ron`;
-        btn.onclick = () => { player.gX = player.savedPos.x; player.gY = player.savedPos.y; enemies = []; rocks = []; islands = []; sinkingEnemy = null; gameState = STATE.ROAMING; ui.resultScreen.classList.remove('visible'); ui.controls.style.display = 'flex'; };
-    } else { 
-        title.innerText = "¡DERROTA!"; title.style.color = "#c0392b";
-        vibrate(400); 
-        player.inventory.gold = Math.floor(player.inventory.gold / 2); loot.innerHTML = "Barco destruido. Rescatado en el puerto.";
-        btn.onclick = () => { player.gX = 180; player.gY = 0; player.hp = 100; enemies = []; rocks = []; islands = []; sinkingEnemy = null; gameState = STATE.ROAMING; ui.resultScreen.classList.remove('visible'); ui.controls.style.display = 'flex'; };
-    }
-}
-
-// === PUERTO ===
-function renderPortMenu(screen) {
-    const content = ui.portContent; content.innerHTML = '';
-    if (screen === 'main') {
-        content.innerHTML = `<div class="port-option" onclick="renderPortMenu('tavern')"><span>🍺 Taberna</span> <span>➡️</span></div><div class="port-option" onclick="renderPortMenu('shipyard')"><span>🛠️ Astillero</span> <span>➡️</span></div><div class="port-option active" onclick="exitPort()"><span>⛵ ZARPAR</span> <span>➡️</span></div>`;
-    } else if (screen === 'tavern') {
-        content.innerHTML = `<div class="npc-text" id="tavern-text">"${TAVERN_QUOTES[Math.floor(Math.random()*TAVERN_QUOTES.length)]}"</div><div class="port-option" onclick="buyRum()"><span>🥃 Ron (10G)</span></div><div class="port-option" onclick="talkTavern()"><span>🗣️ Hablar</span></div><div class="port-option active" onclick="renderPortMenu('main')"><span>🔙 Volver</span></div>`;
-    } else if (screen === 'shipyard') {
-        const cost = (player.maxHp - player.hp);
-        content.innerHTML = `<div class="npc-text" id="ship-text">"¿Reparamos el casco?"</div><div class="port-option" onclick="repairShip()"><span>🔨 Reparar (${cost}G)</span></div><div class="port-option active" onclick="renderPortMenu('main')"><span>🔙 Volver</span></div>`;
-    }
-}
-function buyRum() { if(player.inventory.gold >= 10) { player.inventory.gold -= 10; player.hp = Math.min(player.hp + 20, player.maxHp); document.getElementById('tavern-text').innerText = "¡Salud!"; } else document.getElementById('tavern-text').innerText = "¡No hay oro!"; }
-function talkTavern() { document.getElementById('tavern-text').innerText = `"${TAVERN_QUOTES[Math.floor(Math.random()*TAVERN_QUOTES.length)]}"`; }
-function repairShip() { const cost = Math.floor(player.maxHp - player.hp); if(player.inventory.gold >= cost) { player.inventory.gold -= cost; player.hp = player.maxHp; document.getElementById('ship-text').innerText = "¡Listo!"; renderPortMenu('shipyard'); } }
-function enterPort(port) { gameState = STATE.PORT; player.speed = 0; player.isSailing = false; ui.anchorBtn.classList.remove('sailing'); ui.actionBtn.style.display = 'none'; ui.controls.style.display = 'none'; ui.portScreen.classList.add('visible'); ui.portTitle.innerText = port.name; renderPortMenu('main'); }
-function exitPort() { ui.portScreen.classList.remove('visible'); ui.controls.style.display = 'flex'; gameState = STATE.ROAMING; }
-
-// === UPDATE ===
-function update() {
-    gameTime += 0.05;
-    updateProceduralSpawns();
-    if(player.reloadTimer > 0) player.reloadTimer--;
-    
-    // Movimiento
-    if ((gameState === STATE.ROAMING || gameState === STATE.BATTLE) && gameState !== STATE.MENU) {
-        if (player.isSailing && player.speed < player.maxSpeed) player.speed += player.accel;
-        else if (!player.isSailing && player.speed > 0) player.speed -= 0.05;
-        if(player.speed < -0.1) player.speed += 0.05; // Fricción reversa
-        
-        if (keys.Left) player.angle -= 0.035; if (keys.Right) player.angle += 0.035;
-        player.gX += Math.sin(player.angle) * player.speed; player.gY -= Math.cos(player.angle) * player.speed;
-        if (player.speed > 0.3) wakeParticles.push({x: player.gX - Math.sin(player.angle)*30, y: player.gY + Math.cos(player.angle)*30, life: 1.0, size: Math.random()*3+3});
-    }
-
-    wakeParticles.forEach(p => p.life -= 0.02); wakeParticles = wakeParticles.filter(p => p.life > 0);
-    explosions.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 0.02; }); explosions = explosions.filter(p => p.life > 0);
-
-    if (gameState === STATE.ROAMING) {
-        let inRange = false;
-        ports.forEach(p => {
-            const d = dist(player.gX, player.gY, p.x, p.y);
-            if(d < p.radius + 20) { player.speed = -0.3; const a = Math.atan2(player.gY-p.y, player.gX-p.x); player.gX = p.x + Math.cos(a)*(p.radius+21); player.gY = p.y + Math.sin(a)*(p.radius+21); }
-            if(d < 350 && player.speed < 1.5) { ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "⚓ AMARRAR"; ui.actionBtn.className = ""; ui.actionBtn.onclick = () => enterPort(p); inRange = true; }
-        });
-        if (treasureLoc.active && dist(player.gX, player.gY, treasureLoc.x, treasureLoc.y) < 300) {
-            ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "💎 EXCAVAR TESORO"; ui.actionBtn.className = "treasure";
-            ui.actionBtn.onclick = () => { const g = Math.floor(Math.random()*500+500); player.inventory.gold += g; treasureLoc.active = false; showMsg(`+${g} ORO`, "#f1c40f"); };
-            inRange = true;
-        }
-        if(!inRange) ui.actionBtn.style.display = 'none';
-        
-        islands.forEach(i => { const d = dist(player.gX, player.gY, i.x, i.y); if(d < i.radius + 25) { player.speed = -0.3; const a = Math.atan2(player.gY-i.y, player.gX-i.x); player.gX = i.x + Math.cos(a)*(i.radius+26); player.gY = i.y + Math.sin(a)*(i.radius+26); } });
-        
-        // DAÑO POR ROCAS
-        rocks.forEach(r => { 
-            const d = dist(player.gX, player.gY, r.x, r.y); 
-            if(d < r.size + 25) { 
-                player.speed = -0.8; 
-                const a = Math.atan2(player.gY-r.y, player.gX-r.x); 
-                player.gX = r.x + Math.cos(a)*(r.size+26); player.gY = r.y + Math.sin(a)*(r.size+26); 
-                player.hp -= 1;
-                vibrate(100); 
-                if(player.hp <= 0) { gameState = STATE.SINKING; showMsg("¡NAUFRAGIO!", "#c0392b"); setTimeout(()=>endBattle(false, false), 2000); }
-            } 
-        });
-
-        enemies.forEach(e => { e.x += Math.sin(e.angle) * e.speed; e.y -= Math.cos(e.angle) * e.speed; if (dist(e.x, e.y, player.gX, player.gY) < 60 + e.size) startBattle(e); });
-    
-    } else if (gameState === STATE.BATTLE && battleEnemy) {
-        const dToP = dist(player.gX, player.gY, battleEnemy.x, battleEnemy.y);
-        if (dToP > 900) { if (battleEnemy.hp < battleEnemy.maxHp * 0.25) endBattle(false, true, 'enemy'); else endBattle(false, true, 'player'); return; }
-        const angleToPlayer = Math.atan2(-(player.gX-battleEnemy.x), player.gY-battleEnemy.y) + Math.PI;
-        if (battleEnemy.hp < battleEnemy.maxHp * 0.25) { battleEnemy.angle = angleToPlayer + Math.PI; battleEnemy.x += Math.sin(battleEnemy.angle) * 2.0; battleEnemy.y -= Math.cos(battleEnemy.angle) * 2.0; } 
-        else { battleEnemy.angle = angleToPlayer; if(dToP > 300) { battleEnemy.x += Math.sin(battleEnemy.angle)*1.5; battleEnemy.y -= Math.cos(battleEnemy.angle)*1.5; } else if (dToP < 150) { battleEnemy.x -= Math.sin(battleEnemy.angle)*1.0; battleEnemy.y += Math.cos(battleEnemy.angle)*1.0; } }
-        if(battleEnemy.reload-- <= 0 && dToP < 400) { projectiles.push({x: battleEnemy.x, y: battleEnemy.y, vx: Math.sin(battleEnemy.angle+1.57)*6.5, vy: -Math.cos(battleEnemy.angle+1.57)*6.5, life: 60, hostile: true}); battleEnemy.reload = 80 + Math.random()*50; }
-    }
-
-    projectiles.forEach(p => {
-        p.x += p.vx; p.y += p.vy; p.life--;
-        if(p.hostile && dist(p.x, p.y, player.gX, player.gY) < 28) { 
-            player.hp -= 10; p.life = 0; vibrate(200); 
-            if(player.hp <= 0) triggerSinking(false); 
-        }
-        if(!p.hostile && battleEnemy && dist(p.x, p.y, battleEnemy.x, battleEnemy.y) < 45) { battleEnemy.hp -= 10; p.life = 0; if(battleEnemy.hp <= 0) triggerSinking(true); }
-    });
-    projectiles = projectiles.filter(p => p.life > 0);
-}
-
-// === DRAW ===
-function drawImageRotated(img, x, y, size, angle, alpha=1, isStatic=false) {
-    if(!img || !img.complete) return; ctx.save(); ctx.translate(x, y); ctx.rotate(angle + (isStatic ? 0 : Math.PI)); ctx.globalAlpha = alpha;
-    ctx.drawImage(img, -size/2, -size/2, size, size); ctx.restore();
-}
-
-function draw() {
-    const cx = CX(), cy = CY(); ctx.clearRect(0, 0, canvas.width, canvas.height);
-    function getScr(gx, gy) { return { x: gx - player.gX + cx, y: gy - player.gY + cy }; }
-    
-    // FONDO
-    waves.forEach(w => { 
-        let sway = Math.sin(gameTime * 0.1 + w.offset) * 20;
-        let dx = (w.x + sway - player.gX % canvas.width + canvas.width) % canvas.width;
-        let dy = (w.y - player.gY % canvas.height + canvas.height) % canvas.height; 
-        ctx.fillStyle = "rgba(255,255,255,0.15)"; ctx.fillRect(dx, dy, 4, 2); 
-    });
-
-    ports.forEach(port => { let p = getScr(port.x, port.y); let img = sprites.portNormal; if(port.type==='home') img = sprites.portHome; if(port.type==='big') img = sprites.portBig; drawImageRotated(img, p.x, p.y, port.radius*2.6, 0, 1, true); });
-    islands.forEach(i => { let p = getScr(i.x, i.y); drawImageRotated(sprites.island, p.x, p.y, i.radius*2.6, 0, 1, true); });
-    rocks.forEach(r => { let p = getScr(r.x, r.y); drawImageRotated(sprites.rock, p.x, p.y, r.size*2, 0, 1, true); });
-    if (treasureLoc.active) { let p = getScr(treasureLoc.x, treasureLoc.y); drawImageRotated(sprites.island, p.x, p.y, 220, 0, 1, true); ctx.fillStyle = "red"; ctx.font = "bold 45px Arial"; ctx.fillText("X", p.x-15, p.y+15); }
-
-    enemies.forEach(e => { let p = getScr(e.x, e.y); let img = sprites.shipSmall; if(e.size>22) img = sprites.shipMed; if(e.type==='ghost') img=sprites.ghost; if(e.type==='hunter') img=sprites.hunter; drawImageRotated(img, p.x, p.y, e.size*3, e.angle); });
-    if(sinkingEnemy) { let p = getScr(sinkingEnemy.x, sinkingEnemy.y); drawImageRotated(sprites.shipMed, p.x, p.y, sinkingEnemy.size*3, sinkingEnemy.angle, sinkingEnemy.alpha); }
-    wakeParticles.forEach(p => { let pos = getScr(p.x, p.y); ctx.fillStyle = `rgba(255, 255, 255, ${p.life})`; ctx.fillRect(pos.x, pos.y, p.size, p.size); });
-    projectiles.forEach(p => { let pos = getScr(p.x, p.y); ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(pos.x, pos.y, 4, 0, Math.PI*2); ctx.fill(); });
-    
-    // JUGADOR
-    if(gameState !== STATE.MENU) drawImageRotated(sprites.player, cx, cy, 55, player.angle);
-
-    // HUD
-    if(gameState !== STATE.MENU && gameState !== STATE.PORT) {
-        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(10, 10, 154, 12); ctx.fillStyle = '#e74c3c'; ctx.fillRect(12, 12, 150 * (player.hp/player.maxHp), 8);
-        ctx.textAlign = 'left'; ctx.font = 'bold 16px sans-serif'; ctx.fillStyle = '#f1c40f'; ctx.fillText(`💰 ${player.inventory.gold}`, 10, 45); ctx.fillStyle = '#e67e22'; ctx.fillText(`🍾 ${player.inventory.rum}`, 100, 45);
-        
-        const ms = 150, m = 10; ctx.save(); ctx.translate(canvas.width - ms - m, m);
-        if(sprites.minimap.complete) ctx.drawImage(sprites.minimap, 0, 0, ms, ms);
-        
-        const mid = ms/2;
-        ctx.fillStyle = "black"; ctx.font = "bold 12px Arial"; ctx.textAlign = "center"; ctx.fillText("N", mid, 12);
-        const scale = 0.02; 
-        islands.forEach(i => { const dx = (i.x - player.gX)*scale, dy = (i.y - player.gY)*scale; if(Math.abs(dx)<mid-5 && Math.abs(dy)<mid-5) { ctx.fillStyle = "rgba(46, 204, 113, 0.8)"; ctx.font = "10px Arial"; ctx.fillText("🌴", mid+dx, mid+dy+4); } });
-        ports.forEach(p => { const dx = (p.x - player.gX)*scale, dy = (p.y - player.gY)*scale; if(Math.abs(dx)<mid-5 && Math.abs(dy)<mid-5) { ctx.fillStyle = "black"; ctx.font = "italic bold 8px 'Palatino', serif"; ctx.textAlign = "center"; ctx.fillText(p.name, mid+dx, mid+dy - 8); ctx.font = "12px Arial"; ctx.fillText("⚓", mid+dx, mid+dy + 5); } });
-        enemies.forEach(e => { const dx = (e.x - player.gX)*scale, dy = (e.y - player.gY)*scale; if(Math.abs(dx)<mid-5 && Math.abs(dy)<mid-5) { ctx.fillStyle = "#e74c3c"; ctx.beginPath(); ctx.arc(mid+dx, mid+dy, 4, 0, Math.PI*2); ctx.fill(); } });
-        if(player.hasMap && treasureLoc.active) { const dx = (treasureLoc.x - player.gX)*scale, dy = (treasureLoc.y - player.gY)*scale; if(Math.abs(dx)<mid-5 && Math.abs(dy)<mid-5) { ctx.fillStyle = "red"; ctx.font = "bold 15px Arial"; ctx.fillText("X", mid+dx-4, mid+dy+5); } }
-        ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(mid, mid, 5, 0, Math.PI*2); ctx.fill(); ctx.restore();
-    }
-}
-
-function setupControls() {
-    const btnMap = { 'btn-left': 'Left', 'btn-right': 'Right' };
-    Object.keys(btnMap).forEach(id => { const el = document.getElementById(id); el.onmousedown = el.ontouchstart = (e) => { e.preventDefault(); keys[btnMap[id]] = true; }; el.onmouseup = el.ontouchend = () => { keys[btnMap[id]] = false; }; });
-    ui.anchorBtn.onclick = () => { player.isSailing = !player.isSailing; ui.anchorBtn.classList.toggle('sailing'); showMsg(player.isSailing ? "¡LEVAR ANCLAS!" : "¡LANZAR EL ANCLA!"); };
-    ui.btnShootL.onclick = () => { if(player.reloadTimer<=0) { projectiles.push({x:player.gX, y:player.gY, vx:Math.sin(player.angle-1.57)*7, vy:-Math.cos(player.angle-1.57)*7, life:50, hostile:false}); player.reloadTimer = 60; } };
-    ui.btnShootR.onclick = () => { if(player.reloadTimer<=0) { projectiles.push({x:player.gX, y:player.gY, vx:Math.sin(player.angle+1.57)*7, vy:-Math.cos(player.angle+1.57)*7, life:50, hostile:false}); player.reloadTimer = 60; } };
-}
-setupControls();
-function loop() { update(); draw(); requestAnimationFrame(loop); }
-loop();
-</script>
+<script src="script.js"></script>
 </body>
 </html>
