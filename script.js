@@ -291,6 +291,26 @@ function spawnExplosion(x, y, color) {
     for(let i=0; i<20; i++) explosions.push({ x: x, y: y, vx: (Math.random()-0.5)*8, vy: (Math.random()-0.5)*8, size: Math.floor(Math.random()*8+4), life: 1.5, color: color || '#e67e22' });
 }
 
+// === NUEVA FUNCIÓN PARA GENERAR TESOROS (Agrega esto) ===
+function generarTesoroEn(x, y) {
+    // 1. Lógica: Registrar el punto donde se puede excavar
+    treasureSites.push({ 
+        x: x, 
+        y: y, 
+        active: true 
+    });
+
+    // 2. Visual: ¡FORZAR la creación de la isla visualmente!
+    // IMPORTANTE: Le ponemos 'permanent: true' para que el limpiador no la borre si está lejos
+    islands.push({
+        x: x,
+        y: y,
+        radius: 110,         // Tamaño estándar
+        isTreasure: true,    // Usa el sprite de isla bonita
+        permanent: true      // <--- LA CLAVE: Inmortalidad visual hasta que la encuentres
+    });
+}
+
 // === SPAWNS ===
 function updateProceduralSpawns() {
     if (gameState !== STATE.ROAMING) return;
@@ -354,11 +374,18 @@ function updateProceduralSpawns() {
         }
     }
     
-    // === LIMPIEZA ===
+    // === LIMPIEZA CORREGIDA ===
     enemies = enemies.filter(e => dist(player.gX, player.gY, e.x, e.y) < 5000);
     rocks = rocks.filter(r => dist(player.gX, player.gY, r.x, r.y) < 4000);
-    islands = islands.filter(i => dist(player.gX, player.gY, i.x, i.y) < 7000);
-    treasureSites = treasureSites.filter(t => t.active && dist(player.gX, player.gY, t.x, t.y) < 7000);
+    
+    // AHORA: Si la isla es 'permanent' (mapa comprado/encontrado), NO se borra aunque esté lejos
+    islands = islands.filter(i => i.permanent || dist(player.gX, player.gY, i.x, i.y) < 7000);
+    
+    // Los sitios de tesoro también deben persistir si son mapas lejanos (ya lo hacías, pero asegúrate)
+    treasureSites = treasureSites.filter(t => t.active); 
+    // Nota: Quité el filtro de distancia de treasureSites para que el mapa siempre funcione, 
+    // o puedes dejarlo si confías en que 7000 es suficiente, pero recomiendo quitarlo para mapas lejanos.
+
 }
 
 // === BATALLA ===
