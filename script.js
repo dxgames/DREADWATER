@@ -291,7 +291,7 @@ function spawnExplosion(x, y, color) {
     for(let i=0; i<20; i++) explosions.push({ x: x, y: y, vx: (Math.random()-0.5)*8, vy: (Math.random()-0.5)*8, size: Math.floor(Math.random()*8+4), life: 1.5, color: color || '#e67e22' });
 }
 
-// === NUEVA FUNCIÓN PARA GENERAR TESOROS (Agrega esto) ===
+// === NUEVA FUNCIÓN PARA GENERAR TESOROS ===
 function generarTesoroEn(x, y) {
     // 1. Lógica: Registrar el punto donde se puede excavar
     treasureSites.push({ 
@@ -301,13 +301,13 @@ function generarTesoroEn(x, y) {
     });
 
     // 2. Visual: ¡FORZAR la creación de la isla visualmente!
-    // IMPORTANTE: Le ponemos 'permanent: true' para que el limpiador no la borre si está lejos
+    // IMPORTANTE: 'permanent: true' evita que el limpiador la borre si está lejos
     islands.push({
         x: x,
         y: y,
-        radius: 110,         // Tamaño estándar
-        isTreasure: true,    // Usa el sprite de isla bonita
-        permanent: true      // <--- LA CLAVE: Inmortalidad visual hasta que la encuentres
+        radius: 110,         
+        isTreasure: true,    
+        permanent: true      
     });
 }
 
@@ -471,46 +471,76 @@ function endBattle(win, escaped, whoEscaped, gold=0, rum=0, maps=0, winMsg="") {
 }
 
 // === ASTILLERO ===
-function renderPortMenu(screen) {
-    const content = ui.portContent; content.innerHTML = '';
-    if (screen === 'main') {
-        content.innerHTML = `<div class="port-option" onclick="talkDialog()"><span>🗣️ Hablar</span></div>
-            <div class="port-option" onclick="renderPortMenu('tavern')"><span>🍺 Taberna</span></div>
-            <div class="port-option" onclick="renderPortMenu('shipyard')"><span>🛠️ Astillero</span></div>
-            <div class="port-option" onclick="restInPort()"><span>🛌 Descansar</span></div>
-            <div class="port-option active" onclick="exitPort()"><span>⛵ ZARPAR</span></div>`;
-    } else if (screen === 'tavern') {
-        content.innerHTML = `<div class="npc-text" id="tavern-text">"¿Una copa?"</div>
-            <div class="port-option" onclick="buyRum()"><span>🥃 Comprar Ron (10G)</span></div>
-            <div class="port-option active" onclick="renderPortMenu('main')"><span>🔙 Volver</span></div>`;
-    } else if (screen === 'shipyard') {
-        const costRep = Math.floor(player.maxHp - player.hp);
-        let upgradeHTML = `<div class="npc-text" id="ship-text">"¿Mejoras?"</div>
-            <div class="port-option" onclick="repairShip()"><span>🔨 Reparar (${costRep}G)</span></div>
-            <div class="port-option" onclick="buyUpgrade('sails')"><span>🚩 Velas (${player.upgrades.sails}) [500G]</span></div>
-            <div class="port-option" onclick="buyUpgrade('hull')"><span>🛡️ Casco (${player.upgrades.hull}) [300G]</span></div>
-            <div class="port-option" onclick="buyUpgrade('cannons')"><span>💣 Cañón (${player.upgrades.cannons}) [500G]</span></div>`;
-        if(!player.upgrades.frontCannon) upgradeHTML += `<div class="port-option" onclick="buyWeapon('front')"><span>🔴 Cañón Frontal (1000G)</span></div>`;
-        if(!player.upgrades.rearCannon) upgradeHTML += `<div class="port-option" onclick="buyWeapon('rear')"><span>⚫ Cañón Trasero (1000G)</span></div>`;
-        upgradeHTML += `<div class="port-option active" onclick="renderPortMenu('main')"><span>🔙 Volver</span></div>`;
-        content.innerHTML = upgradeHTML;
-    }
-}
-function buyUpgrade(type) { let cost = (type==='hull')?300:500; if(player.inventory.gold >= cost) { player.inventory.gold -= cost; player.upgrades[type]++; renderPortMenu('shipyard'); } }
-function buyWeapon(pos) { if(player.inventory.gold >= 1000) { player.inventory.gold -= 1000; if(pos==='front') player.upgrades.frontCannon = true; else player.upgrades.rearCannon = true; renderPortMenu('shipyard'); } }
-function buyRum() { if(player.inventory.gold >= 10) { player.inventory.gold -= 10; player.inventory.rum += 5; document.getElementById('tavern-text').innerText = "¡Ron!"; } }
-function restInPort() { 
-    player.savedPos.x = player.gX; player.savedPos.y = player.gY; player.spawnPort = currentPort.name; saveGame(); 
-    showMsg("PUNTO DE APARICIÓN FIJADO", "#2ecc71"); 
-}
-function talkDialog() { 
-    const pool = (currentPort && currentPort.name === 'Desesperanza') ? POOR_QUOTES : PORT_QUOTES;
-    document.getElementById('dialog-text').innerText = `"${pool[Math.floor(Math.random()*pool.length)]}"`; 
-    document.getElementById('dialog-modal').style.display = 'block'; 
-}
-function repairShip() { const c = Math.floor(player.maxHp - player.hp); if(player.inventory.gold >= c) { player.inventory.gold -= c; player.hp = player.maxHp; renderPortMenu('shipyard'); } }
-function enterPort(port) { currentPort = port; gameState = STATE.PORT; player.speed = 0; player.isSailing = false; ui.anchorBtn.classList.remove('sailing'); ui.actionBtn.style.display = 'none'; ui.controls.style.display = 'none'; ui.portScreen.classList.add('visible'); ui.portTitle.innerText = port.name; renderPortMenu('main'); }
-function exitPort() { ui.portScreen.classList.remove('visible'); ui.controls.style.display = 'flex'; gameState = STATE.ROAMING; }
+function renderPortMenu() {
+    const menu = document.getElementById('port-content');
+    menu.innerHTML = '';
+
+    // Frase del NPC
+    const quoteDiv = document.createElement('div');
+    quoteDiv.className = 'npc-text';
+    quoteDiv.innerText = PORT_QUOTES[Math.floor(Math.random() * PORT_QUOTES.length)];
+    menu.appendChild(quoteDiv);
+
+    // Opciones
+    const opts = [
+        { 
+            txt: "Reparar Barco (50 oro)", 
+            cost: 50, 
+            action: () => { 
+                if(player.gold >= 50 && player.hp < 100) {
+                    player.gold -= 50; player.hp = 100; showMsg("¡Barco reparado!", "#2ecc71"); renderPortMenu();
+                } else showMsg("No puedes hacer eso", "#e74c3c");
+            } 
+        },
+        { 
+            txt: "Comprar Mapa (150 oro)", 
+            cost: 150, 
+            action: () => { 
+                if(player.gold >= 150) {
+                    player.gold -= 150; 
+                    player.mapCount++;
+                    
+                    const px = player.gX; const py = player.gY;
+                    const random = (Math.random() > 0.5 ? 1 : -1) * (15000 + Math.random()*15000);
+                    
+                    // CAMBIO APLICADO: Usar la nueva función generadora
+                    generarTesoroEn(px + random, py + random);
+                    
+                    showMsg("¡Nueva ubicación en el mapa!", "#f1c40f"); renderPortMenu();
+                } else showMsg("Necesitas más oro", "#e74c3c");
+            } 
+        },
+        { 
+            txt: "Mejorar Cañones (500 oro)", 
+            cost: 500, 
+            action: () => { 
+                if(player.gold >= 500 && !player.upgrades.frontCannon) {
+                    player.gold -= 500; player.upgrades.frontCannon = true;
+                    document.getElementById('btn-shoot-f').style.visibility = 'visible';
+                    showMsg("¡Cañón frontal instalado!", "#3498db"); renderPortMenu();
+                } else showMsg("No disponible o sin oro", "#e74c3c");
+            } 
+        },
+        { 
+            txt: "Zarpar", 
+            cost: 0, 
+            action: () => { 
+                document.getElementById('port-screen').classList.remove('visible');
+                player.inPort = false;
+                player.gX += Math.cos(player.angle)*200; // Empujón para salir
+                player.gY += Math.sin(player.angle)*200;
+            } 
+        }
+    ];
+
+    opts.forEach(o => {
+        const btn = document.createElement('div');
+        btn.className = 'port-option';
+        btn.innerHTML = `<span>${o.txt}</span>`;
+        btn.onclick = o.action;
+        menu.appendChild(btn);
+    });
+                   }
 
 // === UPDATE ===
 function update() {
