@@ -2,104 +2,273 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
-    <meta property="og:title" content="🏴‍☠️DREADWATER🏴‍☠️- v1.2.5">
-    <meta property="og:description" content="Navega aguas traicioneras, caza tesoros ocultos y enfréntate al legendario Barco Fantasma. En DREADWATER, el océano es tu tumba o tu gloria. ¿Te atreves a zarpar?">
-    
-    <meta property="og:image" content="https://i.postimg.cc/2jwwXnQ4/previsualizacion.jpg">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="https://i.postimg.cc/2jwwXnQ4/previsualizacion.jpg">
-
-    <link rel="icon" href="https://i.postimg.cc/RVSkpKDN/Icono.png" type="image/png">
-    <link rel="apple-touch-icon" href="https://i.postimg.cc/RVSkpKDN/Icono.png">
-
-    <title>DREADWATER v1.2.5 - DX GAMES</title>
-    <link rel="stylesheet" href="style.css">
+    <title>DREADWATER v1.2.5</title>
+    <style>
+        body { margin: 0; background: #050505; color: #a8a8a8; font-family: 'Courier New', monospace; overflow: hidden; }
+        canvas { display: block; image-rendering: pixelated; }
+        #ui { position: absolute; top: 10px; left: 10px; pointer-events: none; }
+    </style>
 </head>
 <body>
-
-<canvas id="gameCanvas"></canvas>
-<div id="msg-area"></div>
-<button id="action-btn">ACCIÓN</button>
-
-<div id="dialog-modal">
-    <div id="dialog-text" style="margin-bottom: 20px; font-style: italic;"></div>
-    <button class="btn-ui" style="padding: 5px 20px; font-size: 14px;" onclick="closeDialog()">Cerrar</button>
-</div>
-
-<div id="main-menu" class="ui-layer visible">
-    <img src="https://i.postimg.cc/CLxZMqWv/Titulo.png" class="game-title-img" alt="DREADWATER">
-    <button class="menu-btn btn-play" onclick="startGame()">JUGAR</button>
-    <button class="menu-btn" onclick="showSettings()">AJUSTES</button>
-    <button class="menu-btn" onclick="showAbout()">ACERCA DE</button>
-</div>
-
-<div id="settings-menu" class="ui-layer">
-    <h2 style="font-size: 30px;">AJUSTES</h2>
-    <button class="menu-btn" id="btn-music" onclick="toggleSetting('music')">MÚSICA: ON</button>
-    <button class="menu-btn" id="btn-ambient" onclick="toggleSetting('ambient')">AMBIENTE: ON</button>
-    <button class="menu-btn" id="btn-sound" onclick="toggleSetting('sound')">SONIDO: ON</button>
-    <button class="menu-btn" id="btn-vibrate" onclick="toggleSetting('vibrate')">VIBRACIÓN: ON</button>
-    <button class="menu-btn" onclick="showMain()">VOLVER</button>
-</div>
-
-<div id="about-menu" class="ui-layer">
-    <h2 style="font-size: 30px;">ACERCA DE</h2>
-    <div class="about-text">
-        Creado por <span class="highlight">DX GAMES</span><br><br>
-        Versión: <span class="highlight">v1.2.5</span><br><br>
-        ¡GRACIAS POR JUGAR!
+    <div id="ui">
+        <div>ORO: <span id="gold">0</span></div>
+        <div>MAPAS: <span id="maps">0</span></div>
+        <div id="msg"></div>
     </div>
-    <button class="menu-btn" onclick="showMain()">VOLVER</button>
-</div>
+    <canvas id="game"></canvas>
 
-<div id="map-screen" class="ui-layer" onclick="if(event.target === this) closeMap()">
-    <h2 style="margin-top:20px; color:#f1c40f;">MAPA DE NAVEGACIÓN</h2>
-    <canvas id="mapCanvas" style="border: 2px solid #f1c40f; background: #000; margin: 10px; touch-action: none;"></canvas>
-    <div style="color:white; font-size:14px; pointer-events:none;">Toca el fondo oscuro para cerrar</div>
-</div>
+<script>
+/**
+ * DREADWATER - v1.2.5 (Modificado por Gemi)
+ * * CAMBIOS:
+ * - Islas del Tesoro: Persistentes (inmunes al limpiador) hasta ser saqueadas y abandonadas.
+ * - Generación: 1 Isla del Tesoro por cada Mapa en inventario al inicio.
+ * - Puerto: Eliminada la compra de mapas.
+ */
 
-<div class="controls-layer" id="game-controls">
-    
-    <div class="control-group-stack">
-        <div class="btn" id="btn-anchor">⚓</div>
-        <div class="control-group">
-            <div class="btn" id="btn-left">⬅️</div>
-            <div class="btn" id="btn-right">➡️</div>
-        </div>
-    </div>
+const cvs = document.getElementById('game');
+const ctx = cvs.getContext('2d');
 
-    <div class="fire-controls" id="fire-controls">
-        <div class="btn btn-fire" id="btn-shoot-f" style="visibility:hidden">⬆️💣</div>
+// Ajuste de pantalla
+cvs.width = window.innerWidth;
+cvs.height = window.innerHeight;
+
+// ESTADOS
+const ST = { MENU: 0, ROAMING: 1, PORT: 2, BATTLE: 3 };
+let currentState = ST.ROAMING;
+
+// JUGADOR
+const player = {
+    x: 0, y: 0,
+    angle: 0,
+    speed: 0,
+    maxSpeed: 4,
+    gold: 50,
+    maps: 2, // Empezamos con 2 mapas para probar
+    hp: 100
+};
+
+// MUNDO
+const TILE_SIZE = 64;
+let islands = [];
+let treasureIslands = []; // Array separado para las islas VIP
+let enemies = [];
+const RENDER_DIST = 1500; // Distancia de visión
+const CLEANER_DIST = 2000; // Distancia para borrar objetos
+
+// RECURSOS (Simulados con colores por ahora)
+const sprites = {
+    water: '#0a1a2a',
+    island: '#2e2e2e',
+    treasureIsland: '#3e3e2e', // Un poco más dorada/sucia
+    player: '#8b0000'
+};
+
+// INPUT
+const keys = {};
+window.onkeydown = e => keys[e.key] = true;
+window.onkeyup = e => keys[e.key] = false;
+
+// --- SISTEMA DE ISLAS ---
+
+function createIsland(x, y, isTreasure = false) {
+    return {
+        x: x || player.x + (Math.random() - 0.5) * 3000,
+        y: y || player.y + (Math.random() - 0.5) * 3000,
+        w: 100 + Math.random() * 100,
+        h: 100 + Math.random() * 100,
+        isTreasure: isTreasure,
+        looted: false,
+        id: Math.random().toString(36).substr(2, 9)
+    };
+}
+
+// Generar islas del tesoro basadas en mapas
+function generateTreasureIslands() {
+    console.log("Generando islas del tesoro: " + player.maps);
+    for (let i = 0; i < player.maps; i++) {
+        // Las generamos lejos para que haya que navegar
+        let tx = player.x + (Math.random() > 0.5 ? 1 : -1) * (1000 + Math.random() * 2000);
+        let ty = player.y + (Math.random() > 0.5 ? 1 : -1) * (1000 + Math.random() * 2000);
+        treasureIslands.push(createIsland(tx, ty, true));
+    }
+}
+
+// Inicialización
+function init() {
+    generateTreasureIslands();
+}
+
+// --- BUCLE PRINCIPAL ---
+
+function update() {
+    if (currentState === ST.ROAMING) {
+        // Movimiento Jugador
+        if (keys['ArrowUp']) player.speed = Math.min(player.speed + 0.1, player.maxSpeed);
+        else player.speed = Math.max(player.speed - 0.05, 0);
         
-        <div style="display:flex; gap:10px;">
-            <div class="btn btn-fire" id="btn-shoot-l">⬅️💣</div>
-            <div class="btn btn-fire" id="btn-shoot-r">💣➡️</div>
-        </div>
+        if (keys['ArrowLeft']) player.angle -= 0.05;
+        if (keys['ArrowRight']) player.angle += 0.05;
+
+        player.x += Math.cos(player.angle) * player.speed;
+        player.y += Math.sin(player.angle) * player.speed;
+
+        // Generación procedural de islas normales
+        if (Math.random() < 0.01 && islands.length < 10) {
+            islands.push(createIsland());
+        }
+
+        // COLISIONES E INTERACCIONES
+        checkCollisions(islands);
+        checkCollisions(treasureIslands);
+
+        // EL LIMPIADOR (The Cleaner)
+        cleanWorld();
+    }
+}
+
+function checkCollisions(list) {
+    list.forEach(isl => {
+        // Colisión simple AABB vs Punto (mejorar hitbox luego)
+        let dist = Math.hypot(player.x - isl.x, player.y - isl.y);
         
-        <div class="btn btn-fire" id="btn-shoot-b" style="visibility:hidden">⬇️💣</div>
-    </div>
+        // Entrar a Puerto / Saquear
+        if (dist < 100) {
+            if (isl.isTreasure) {
+                if (!isl.looted) {
+                    lootIsland(isl);
+                }
+            } else {
+                enterPort();
+            }
+        }
+    });
+}
 
-</div>
+function lootIsland(island) {
+    island.looted = true;
+    player.gold += 500;
+    player.maps--; // Consumimos el mapa al encontrarlo
+    uiMsg("¡Tesoros encontrados! +500 Oro. El mapa se ha consumido.");
+}
 
-<div id="port-screen" class="ui-layer">
-    <div id="port-menu">
-        <h2 id="port-title">PUERTO</h2>
-        <div id="port-content"></div>
-    </div>
-</div>
+function enterPort() {
+    if (keys['Enter'] && currentState !== ST.PORT) {
+        currentState = ST.PORT;
+        uiMsg("PUERTO: [1] Reparar (50g) | [2] Salir");
+        player.speed = 0;
+    }
+}
 
-<div id="result-screen" class="ui-layer">
-    <div class="result-content">
-        <h1 id="result-title">VICTORIA</h1>
-        <div id="result-loot" style="color: #f1c40f; font-size: 16px; margin: 20px 0;"></div>
-        <button class="btn-ui" id="btn-continue">CONTINUAR</button>
-    </div>
-</div>
+// Lógica del Puerto
+window.addEventListener('keydown', (e) => {
+    if (currentState === ST.PORT) {
+        if (e.key === '1') {
+            if (player.gold >= 50) {
+                player.gold -= 50;
+                player.hp = 100;
+                uiMsg("Barco reparado.");
+            } else {
+                uiMsg("No tienes oro, rata de mar.");
+            }
+        }
+        // ELIMINADO: Opción de comprar mapas
+        /* if (e.key === 'M') { // Código viejo borrado
+            buyMap(); 
+        } 
+        */
+        if (e.key === '2' || e.key === 'Escape') {
+            currentState = ST.ROAMING;
+            uiMsg("");
+        }
+    }
+});
 
-<script src="script.js"></script>
+function cleanWorld() {
+    // Limpiador de islas normales (se borran si están lejos)
+    islands = islands.filter(isl => {
+        let d = Math.hypot(player.x - isl.x, player.y - isl.y);
+        return d < CLEANER_DIST;
+    });
+
+    // Limpiador de ISLAS DEL TESORO
+    // SOLO se borran si: Ya fueron saqueadas Y el jugador se aleja
+    treasureIslands = treasureIslands.filter(isl => {
+        let d = Math.hypot(player.x - isl.x, player.y - isl.y);
+        
+        if (!isl.looted) {
+            return true; // Si tiene tesoro, NUNCA desaparece, no importa la distancia
+        } else {
+            // Si ya no tiene tesoro, se comporta como isla normal (se borra al alejarse)
+            return d < CLEANER_DIST;
+        }
+    });
+}
+
+// --- RENDER ---
+
+function draw() {
+    // Fondo (Mar)
+    ctx.fillStyle = sprites.water;
+    ctx.fillRect(0, 0, cvs.width, cvs.height);
+
+    ctx.save();
+    // Cámara centrada en el jugador
+    ctx.translate(cvs.width/2 - player.x, cvs.height/2 - player.y);
+
+    // Dibujar Islas Normales
+    ctx.fillStyle = sprites.island;
+    islands.forEach(isl => {
+        ctx.fillRect(isl.x - isl.w/2, isl.y - isl.h/2, isl.w, isl.h);
+        // Texto debug
+        ctx.fillStyle = '#fff';
+        ctx.fillText("Isla", isl.x, isl.y);
+        ctx.fillStyle = sprites.island;
+    });
+
+    // Dibujar Islas del Tesoro
+    treasureIslands.forEach(isl => {
+        ctx.fillStyle = isl.looted ? '#555' : sprites.treasureIsland; // Gris si saqueada
+        ctx.fillRect(isl.x - isl.w/2, isl.y - isl.h/2, isl.w, isl.h);
+        
+        ctx.fillStyle = '#ffd700';
+        ctx.font = '20px Courier New';
+        if (!isl.looted) ctx.fillText("X", isl.x - 5, isl.y + 5); // La marca X
+    });
+
+    // Dibujar Jugador
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.rotate(player.angle);
+    ctx.fillStyle = sprites.player;
+    ctx.beginPath();
+    ctx.moveTo(20, 0);
+    ctx.lineTo(-10, 10);
+    ctx.lineTo(-10, -10);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.restore();
+
+    // UI Updates
+    document.getElementById('gold').innerText = player.gold;
+    document.getElementById('maps').innerText = player.maps;
+}
+
+function uiMsg(txt) {
+    document.getElementById('msg').innerText = txt;
+    setTimeout(() => { if(document.getElementById('msg').innerText == txt) document.getElementById('msg').innerText = ""; }, 3000);
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+init();
+loop();
+
+</script>
 </body>
 </html>
