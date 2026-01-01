@@ -252,19 +252,17 @@ function drawFullMap() {
         mapCtx.fillStyle = "#bdc3c7"; mapCtx.font = `${10/mapCam.zoom}px monospace`; mapCtx.textAlign = "center"; mapCtx.fillText(p.name, mx, my - 6/mapCam.zoom);
     });
     
-    // MOSTRAR TESOROS SOLO SI TENEMOS MAPAS OBTENIDOS
-    if (player.mapCount > 0) {
-        treasureSites.forEach(t => {
-            if(!t.active) return;
-            const mx = cx + t.x * scale; const my = cy + t.y * scale;
-            mapCtx.font = `${16/mapCam.zoom}px Arial`;
-            mapCtx.textAlign = "center";
-            mapCtx.fillText("🏝️", mx, my + 5/mapCam.zoom);
-            mapCtx.fillStyle = "red";
-            mapCtx.font = `bold ${14/mapCam.zoom}px Arial`;
-            mapCtx.fillText("X", mx, my + 5/mapCam.zoom);
-        });
-    }
+    // MOSTRAR TESOROS
+    treasureSites.forEach(t => {
+        if(!t.active) return;
+        const mx = cx + t.x * scale; const my = cy + t.y * scale;
+        mapCtx.font = `${16/mapCam.zoom}px Arial`;
+        mapCtx.textAlign = "center";
+        mapCtx.fillText("🏝️", mx, my + 5/mapCam.zoom);
+        mapCtx.fillStyle = "red";
+        mapCtx.font = `bold ${14/mapCam.zoom}px Arial`;
+        mapCtx.fillText("X", mx, my + 5/mapCam.zoom);
+    });
 
     const px = cx + player.gX * scale; const py = cy + player.gY * scale;
     drawTriangle(mapCtx, px, py, 8/mapCam.zoom, player.angle);
@@ -295,15 +293,9 @@ function spawnExplosion(x, y, color) {
 function updateProceduralSpawns() {
     if (gameState !== STATE.ROAMING) return;
     
-    // 1. COOLDOWN DEL CAZADOR
     if(hunterCooldown > 0) hunterCooldown -= 16.6;
 
-    // 2. SPAWN DEL CAZADOR (PRIORITARIO Y SEPARADO)
-    // Esto asegura que aparezca aunque haya otros barcos, si cumples la condición de oro.
     if (player.inventory.gold > 1000 && enemies.filter(e => e.type === 'hunter').length === 0 && hunterCooldown <= 0) {
-        // La probabilidad aumenta con el oro:
-        // 1000 oro = 0.05% por frame (Raro)
-        // 5000 oro = 0.25% por frame (Aprox cada 7-10 segundos)
         if (Math.random() < 0.0005 * (player.inventory.gold / 1000)) { 
              const a = Math.random() * Math.PI * 2;
              enemies.push({ x: player.gX+Math.cos(a)*1500, y: player.gY+Math.sin(a)*1500, angle: Math.random()*Math.PI*2, hp: 500, maxHp: 500, size: 25, type: 'hunter', id: Math.random(), reload: 50, canFlee: false, speed: 2.0 });
@@ -311,54 +303,48 @@ function updateProceduralSpawns() {
         }
     }
 
-    // 3. SPAWN DE ENEMIGOS NORMALES Y FANTASMA (RESTO DE LA FLOTA)
-    // Regresamos a la lógica original: Llenamos hasta 8 barcos
     if (enemies.length < 8) {
         const a = Math.random() * Math.PI * 2; const d = 1800; 
         let type = 'normal'; let size = 20; let hp = 50; let canFlee = true; let spd = 0.8;
         const rand = Math.random();
-        
-        // Fantasma (Raro)
-        if (rand < 0.00008) { 
+        if (rand < 0.008) { 
             type = 'ghost'; size = 35; hp = 1000; canFlee = false; spd = 2.2; 
             showMsg("¡SENTIRÁS EL FRÍO!", "#2ecc71");
         }
-        // Barco Grande
         else if (rand < 0.2) { type = 'big'; size = 30; hp = 150; canFlee = Math.random() < 0.3; spd = 1.0; }
-        // Barco Mediano
         else if (rand < 0.5) { type = 'med'; size = 25; hp = 100; canFlee = Math.random() < 0.3; spd = 1.2; }
         
-        // Solo spawneamos si NO salió 'hunter' por error aquí (aunque ya lo filtramos arriba)
         if (type !== 'hunter') {
             enemies.push({ x: player.gX+Math.cos(a)*d, y: player.gY+Math.sin(a)*d, angle: Math.random()*Math.PI*2, hp: hp, maxHp: hp, size: size, type: type, id: Math.random(), reload: 60, canFlee: canFlee, speed: spd });
         }
     }
 
-    // 4. ROCAS
     if (rocks.length < 12) { const a = Math.random()*Math.PI*2; rocks.push({ x: player.gX+Math.cos(a)*1500, y: player.gY+Math.sin(a)*1500, size: 50 }); }
     
-    // 5. ISLAS Y TESOROS (INTACTO - NO TOCAR)
-    // Esta es la lógica corregida que ya funciona bien
-    if (islands.length < 6) { 
+    // ISLAS NORMALES (Limite reducido para dejar espacio a las del tesoro)
+    if (islands.length < 4) { 
         const a = Math.random() * Math.PI * 2;
-        const isTreasure = Math.random() < 0.008; // 0.8%
-        const dSpawn = isTreasure ? (4000 + Math.random() * 2000) : 2500;
+        const sX = player.gX + Math.cos(a) * 2500;
+        const sY = player.gY + Math.sin(a) * 2500;
+        islands.push({ x: sX, y: sY, radius: 80 + Math.random() * 40, isTreasure: false });
+    }
+
+    // LÓGICA DE ISLAS DEL TESORO BASADA EN MAPAS
+    if (treasureSites.length < player.mapCount) {
+        const a = Math.random() * Math.PI * 2;
+        const dSpawn = 4000 + Math.random() * 3000;
         const sX = player.gX + Math.cos(a) * dSpawn;
         const sY = player.gY + Math.sin(a) * dSpawn;
-        
-        const newIsland = { x: sX, y: sY, radius: 80 + Math.random() * 40, isTreasure: isTreasure };
-        islands.push(newIsland);
-        
-        if (isTreasure) {
-            treasureSites.push({ x: sX, y: sY, active: true });
-        }
+        treasureSites.push({ x: sX, y: sY, active: true, radius: 100 });
     }
     
-    // === LIMPIEZA ===
+    // LIMPIEZA
     enemies = enemies.filter(e => dist(player.gX, player.gY, e.x, e.y) < 5000);
     rocks = rocks.filter(r => dist(player.gX, player.gY, r.x, r.y) < 4000);
     islands = islands.filter(i => dist(player.gX, player.gY, i.x, i.y) < 7000);
-    treasureSites = treasureSites.filter(t => t.active && dist(player.gX, player.gY, t.x, t.y) < 7000);
+    
+    // Limpiador especial para tesoros: Solo desaparecen si se alejan Y ya no están activos
+    treasureSites = treasureSites.filter(t => t.active || dist(player.gX, player.gY, t.x, t.y) < 2000);
 }
 
 // === BATALLA ===
@@ -408,11 +394,10 @@ function triggerSinking(win) {
             gold = 50; rum = Math.floor(Math.random() * 3) + 1; if(Math.random() < 0.01) mapsFound = 1;
         }
 
-        for(let i=0; i<mapsFound; i++) {
-            player.mapCount++;
-            treasureSites.push({ x: player.savedPosBattle.x + (Math.random()-0.5)*15000, y: player.savedPosBattle.y + (Math.random()-0.5)*15000, active: true });
+        if(mapsFound > 0) {
+            player.mapCount += mapsFound;
+            showMsg("¡MAPA ENCONTRADO!", "#9b59b6");
         }
-        if(mapsFound > 0) showMsg("¡MAPA ENCONTRADO!", "#9b59b6");
 
         battleEnemy = null; enemies = [];
         setTimeout(() => endBattle(true, false, null, gold, rum, mapsFound, msg), 3000);
@@ -521,60 +506,50 @@ function update() {
             const d = dist(player.gX, player.gY, p.x, p.y);
             if(d < p.radius + 10) { player.speed = -0.3; const a = Math.atan2(player.gY-p.y, player.gX-p.x); player.gX = p.x + Math.cos(a)*(p.radius+11); player.gY = p.y + Math.sin(a)*(p.radius+11); }
             if(d < 350 && player.speed < 1.5) { ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "⚓ AMARRAR"; ui.actionBtn.onclick = () => enterPort(p); inRange = true; }
-            
-            enemies.forEach(e => {
-                if(dist(e.x, e.y, p.x, p.y) < p.radius + 10) { 
-                    const a = Math.atan2(e.y-p.y, e.x-p.x); e.x = p.x + Math.cos(a)*(p.radius+15); e.y = p.y + Math.sin(a)*(p.radius+15); e.angle += 0.1;
-                }
-            });
         });
         
-        let digSite = null;
-        treasureSites.forEach(t => { if(t.active && dist(player.gX, player.gY, t.x, t.y) < 300) digSite = t; });
-        if (digSite) {
-            ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "💎 EXCAVAR"; 
-            ui.actionBtn.onclick = () => { 
-                const goldLoot = Math.floor(Math.random() * 4501) + 500; // 500 a 5000
-                player.inventory.gold += goldLoot; 
-                player.inventory.rum += 20; // 20 Ron
-                digSite.active = false; 
-                player.mapCount--; 
-                
-                // 10% probabilidad de encontrar otro mapa
-                if(Math.random() < 0.1) {
-                    player.mapCount++;
-                    treasureSites.push({ x: player.gX + (Math.random()-0.5)*20000, y: player.gY + (Math.random()-0.5)*20000, active: true });
-                    showMsg("¡OTRO MAPA ENCONTRADO!", "#9b59b6");
-                }
-                
-                treasureSites = treasureSites.filter(t => t.active);
-                showMsg(`+${goldLoot} ORO / +20 RON`, "#f1c40f"); 
-            }; 
-            inRange = true;
-        }
+        // COLISIONES E INTERACCIÓN CON ISLAS DEL TESORO
+        treasureSites.forEach(t => { 
+            if(!t.active) return;
+            const d = dist(player.gX, player.gY, t.x, t.y);
+            
+            // Colisión (Usa la misma lógica que islas normales)
+            if(d < t.radius - 20) { 
+                player.speed = -0.5; 
+                const angle = Math.atan2(player.gY - t.y, player.gX - t.x); 
+                player.gX = t.x + Math.cos(angle) * (t.radius - 15); 
+                player.gY = t.y + Math.sin(angle) * (t.radius - 15); 
+            }
+
+            // Acción de excavar
+            if(d < 300) {
+                ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "💎 EXCAVAR"; 
+                ui.actionBtn.onclick = () => { 
+                    const goldLoot = Math.floor(Math.random() * 4501) + 500;
+                    player.inventory.gold += goldLoot; 
+                    player.inventory.rum += 20;
+                    t.active = false; 
+                    player.mapCount--; 
+                    if(Math.random() < 0.1) {
+                        player.mapCount++;
+                        showMsg("¡OTRO MAPA ENCONTRADO!", "#9b59b6");
+                    }
+                    showMsg(`+${goldLoot} ORO / +20 RON`, "#f1c40f"); 
+                }; 
+                inRange = true;
+            }
+        });
 
         if(!inRange) ui.actionBtn.style.display = 'none';
 
         islands.forEach(i => { 
             const d = dist(player.gX, player.gY, i.x, i.y); 
             if(d < i.radius - 20) { player.speed = -0.5; const angle = Math.atan2(player.gY - i.y, player.gX - i.x); player.gX = i.x + Math.cos(angle) * (i.radius - 15); player.gY = i.y + Math.sin(angle) * (i.radius - 15); } 
-            
-            enemies.forEach(e => {
-                if(dist(e.x, e.y, i.x, i.y) < i.radius - 10) {
-                    const a = Math.atan2(e.y-i.y, e.x-i.x); e.x = i.x + Math.cos(a)*(i.radius); e.y = i.y + Math.sin(a)*(i.radius); e.angle += 0.1;
-                }
-            });
         });
 
         rocks.forEach(r => { 
             const d = dist(player.gX, player.gY, r.x, r.y); 
             if(d < r.size - 15) { player.speed = -0.8; const a = Math.atan2(player.gY-r.y, player.gX-r.x); player.gX = r.x + Math.cos(a)*(r.size); player.gY = r.y + Math.sin(a)*(r.size); player.hp -= 1; vibrate(100); if(player.hp <= 0) { gameState = STATE.SINKING; showMsg("¡NAUFRAGIO!", "#c0392b"); setTimeout(()=>endBattle(false, false), 2000); } } 
-            
-            enemies.forEach(e => {
-                if(dist(e.x, e.y, r.x, r.y) < r.size - 5) {
-                    const a = Math.atan2(e.y-r.y, e.x-r.x); e.x = r.x + Math.cos(a)*(r.size+5); e.y = r.y + Math.sin(a)*(r.size+5); e.angle += 0.1;
-                }
-            });
         });
         
         enemies.forEach(e => { 
@@ -636,6 +611,14 @@ function draw() {
     waves.forEach(w => { let sway = Math.sin(gameTime * 0.1 + w.offset) * 20; let dx = (w.x + sway - player.gX % canvas.width + canvas.width) % canvas.width; let dy = (w.y - player.gY % canvas.height + canvas.height) % canvas.height; ctx.fillStyle = "rgba(255,255,255,0.15)"; ctx.fillRect(dx, dy, 4, 2); });
     ports.forEach(port => { let p = getScr(port.x, port.y); let img = (port.type==='home')?sprites.portHome:sprites.portNormal; drawImageRotated(img, p.x, p.y, port.radius*2.6, 0, 1, true); });
     islands.forEach(i => { let p = getScr(i.x, i.y); drawImageRotated(sprites.island, p.x, p.y, i.radius*2.6, 0, 1, true); });
+    
+    // DIBUJAR ISLAS DEL TESORO (Mismo sprite que islas normales)
+    treasureSites.forEach(t => { 
+        if(!t.active) return;
+        let p = getScr(t.x, t.y); 
+        drawImageRotated(sprites.island, p.x, p.y, t.radius*2.6, 0, 1, true); 
+    });
+
     rocks.forEach(r => { let p = getScr(r.x, r.y); drawImageRotated(sprites.rock, p.x, p.y, r.size*2, 0, 1, true); });
     enemies.forEach(e => { if(!isNaN(e.x)) { let p = getScr(e.x, e.y); let img = sprites.shipSmall; if(e.type==='med') img = sprites.shipMed; if(e.type==='big') img = sprites.shipBig; if(e.type==='ghost') img=sprites.ghost; if(e.type==='hunter') img=sprites.hunter; drawImageRotated(img, p.x, p.y, e.size*3, e.angle); if (gameState === STATE.BATTLE) { ctx.fillStyle = "black"; ctx.fillRect(p.x - 20, p.y - 40, 40, 5); ctx.fillStyle = "red"; ctx.fillRect(p.x - 20, p.y - 40, 40 * (e.hp/e.maxHp), 5); } } });
     if(sinkingEnemy) { let p = getScr(sinkingEnemy.x, sinkingEnemy.y); drawImageRotated(sprites.shipMed, p.x, p.y, sinkingEnemy.size*3, sinkingEnemy.angle, sinkingEnemy.alpha); }
@@ -656,8 +639,15 @@ function draw() {
         const mid = ms/2; const scale = 0.02; 
         ports.forEach(p => { const dx = (p.x - player.gX)*scale, dy = (p.y - player.gY)*scale; if(Math.abs(dx)<mid-5 && Math.abs(dy)<mid-5) { ctx.fillStyle = "black"; ctx.font = "italic bold 8px serif"; ctx.textAlign = "center"; ctx.fillText(p.name, mid+dx, mid+dy - 8); ctx.font = "12px Arial"; ctx.fillText("⚓", mid+dx, mid+dy + 5); } });
         
-        // TESOROS EN MINIMAPA (SIEMPRE VISIBLES SI ESTÁS CERCA)
-        treasureSites.forEach(t => { if(!t.active) return; const dx = (t.x - player.gX)*scale, dy = (t.y - player.gY)*scale; if(Math.abs(dx)<mid-5 && Math.abs(dy)<mid-5) { ctx.font = "10px Arial"; ctx.fillText("🏝️", mid+dx-4, mid+dy+4); ctx.fillStyle="red"; ctx.font="bold 8px Arial"; ctx.fillText("X", mid+dx-2, mid+dy+2); } });
+        // MARCAR TESOROS EN MINIMAPA
+        treasureSites.forEach(t => { 
+            if(!t.active) return; 
+            const dx = (t.x - player.gX)*scale, dy = (t.y - player.gY)*scale; 
+            if(Math.abs(dx)<mid-5 && Math.abs(dy)<mid-5) { 
+                ctx.font = "10px Arial"; ctx.fillText("🏝️", mid+dx-4, mid+dy+4); 
+                ctx.fillStyle="red"; ctx.font="bold 8px Arial"; ctx.fillText("X", mid+dx-2, mid+dy+2); 
+            } 
+        });
         
         islands.forEach(i => { const dx = (i.x - player.gX)*scale, dy = (i.y - player.gY)*scale; if(Math.abs(dx)<mid-5 && Math.abs(dy)<mid-5) { ctx.font = "10px Arial"; ctx.fillText("🏝️", mid+dx-4, mid+dy+4); } });
         
