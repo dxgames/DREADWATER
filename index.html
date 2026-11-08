@@ -1,23 +1,62 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
-    <meta property="og:title" content="🏴‍☠️DREADWATER🏴‍☠️- v1.2.5">
-    <meta property="og:description" content="Navega aguas traicioneras, caza tesoros ocultos y enfréntate al legendario Barco Fantasma. En DREADWATER, el océano es tu tumba o tu gloria. ¿Te atreves a zarpar?">
-    
-    <meta property="og:image" content="https://i.postimg.cc/2jwwXnQ4/previsualizacion.jpg">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="https://i.postimg.cc/2jwwXnQ4/previsualizacion.jpg">
-
-    <link rel="icon" href="https://i.postimg.cc/RVSkpKDN/Icono.png" type="image/png">
-    <link rel="apple-touch-icon" href="https://i.postimg.cc/RVSkpKDN/Icono.png">
-
-    <title>DREADWATER v1.2.5 - DX GAMES</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta property="og:title" content="🏴‍☠️DREADWATER🏴‍☠️- beta 0.1.0">
+<meta property="og:description" content="Navega aguas traicioneras, caza tesoros ocultos y enfréntate al legendario Barco Fantasma. En DREADWATER, el océano es tu tumba o tu gloria. ¿Te atreves a zarpar?">
+<meta property="og:image" content="https://i.postimg.cc/2jwwXnQ4/previsualizacion.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://i.postimg.cc/2jwwXnQ4/previsualizacion.jpg">
+<link rel="icon" href="https://i.postimg.cc/RVSkpKDN/Icono.png" type="image/png">
+<link rel="apple-touch-icon" href="https://i.postimg.cc/RVSkpKDN/Icono.png">
+<title>DREADWATER beta 0.1.0 - DX GAMES</title>
+<style>
+body{margin:0;overflow:hidden;background:#2c3e50;touch-action:none;font-family:'Courier New',monospace;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+canvas{display:block;background:#3498db;image-rendering:pixelated}
+/* INTERFAZ */
+.ui-layer{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;display:none;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,.85);z-index:100}
+.visible{display:flex!important;pointer-events:auto!important}
+#main-menu,#settings-menu,#about-menu{background:rgba(0,0,0,.6);z-index:200}
+#map-screen{background:rgba(15,25,35,.95);z-index:150;pointer-events:auto!important}
+.game-title-img{width:85%;max-width:550px;height:auto;margin-bottom:20px;animation:floatTitle 3s ease-in-out infinite;filter:drop-shadow(0 5px 0 rgba(0,0,0,.5))}
+#title-txt{display:none;color:#f1c40f;font-size:44px;text-shadow:3px 3px 0 #000;margin:0 0 20px;animation:floatTitle 3s ease-in-out infinite}
+@keyframes floatTitle{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.menu-btn{background:#2c3e50;color:#f1c40f;border:2px solid #f1c40f;padding:15px 40px;font-size:20px;margin:10px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold;width:250px;box-shadow:0 4px 0 #000;text-transform:uppercase}
+.menu-btn:active{transform:translateY(4px);box-shadow:none}
+.btn-play{background:#27ae60;border-color:#2ecc71;color:#fff;transform:scale(1.1);margin-bottom:20px}
+.about-text{color:#fff;text-align:center;font-size:18px;line-height:1.6;margin-bottom:20px;text-shadow:2px 2px 0 #000}
+.highlight{color:#f1c40f;font-weight:bold}
+h2{color:#f1c40f;text-align:center;margin:0 0 15px;text-shadow:2px 2px 0 #000;text-transform:uppercase}
+/* CONTROLES */
+.controls-layer{position:absolute;bottom:20px;width:100%;height:auto;pointer-events:none;display:none;justify-content:space-between;padding:0 20px;box-sizing:border-box;z-index:10;align-items:flex-end}
+.control-group-stack{pointer-events:auto;display:flex;flex-direction:column;align-items:center;gap:15px}
+.control-group{display:flex;gap:15px}
+.fire-controls{display:none;flex-direction:column;align-items:center;gap:5px;pointer-events:auto}
+.btn{width:65px;height:65px;background:rgba(0,0,0,.4);border:2px solid rgba(255,255,255,.6);border-radius:50%;color:#fff;font-size:28px;display:flex;justify-content:center;align-items:center;touch-action:none;transition:transform .1s}
+.btn:active{background:rgba(255,255,255,.3);transform:scale(.95)}
+.btn-fire{width:60px;height:50px;border-radius:12px;background:rgba(192,57,43,.9);border-color:#e74c3c;font-size:20px}
+.btn-fire.reloading{opacity:.4;filter:grayscale(.7)}
+#btn-anchor{background:rgba(41,128,185,.6)}
+#btn-anchor.sailing{background:rgba(46,204,113,.6);border-color:#2ecc71}
+#action-btn{position:absolute;top:30%;left:50%;transform:translateX(-50%);background:#f1c40f;color:#000;padding:12px 25px;border:3px solid #fff;border-radius:8px;font-weight:bold;font-size:20px;display:none;pointer-events:auto;z-index:50;box-shadow:0 4px 0 #b7950b;text-transform:uppercase;cursor:pointer;white-space:nowrap}
+/* PUERTO Y MODALES */
+#port-menu{background:#2c3e50;border:4px solid #8e44ad;padding:15px;border-radius:10px;width:90%;max-width:400px;max-height:90vh;overflow-y:auto;touch-action:pan-y;box-shadow:0 0 20px #000;color:#fff;box-sizing:border-box}
+.port-stats{text-align:center;color:#f1c40f;font-weight:bold;font-size:16px;margin-bottom:8px}
+.port-option{background:#34495e;color:#bdc3c7;border:1px solid #7f8c8d;padding:13px 10px;margin:7px 0;text-align:left;display:flex;justify-content:space-between;border-radius:5px;font-weight:bold;cursor:pointer;font-size:15px}
+.port-option:active{filter:brightness(1.35)}
+.port-option.active{background:#27ae60;color:#fff;border-color:#2ecc71;justify-content:center}
+.npc-text{font-style:italic;color:#f39c12;margin-bottom:10px;min-height:40px;text-align:center;padding:5px;font-size:14px}
+#dialog-modal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#2c3e50;border:2px solid #f1c40f;padding:20px;border-radius:10px;color:#fff;z-index:300;display:none;text-align:center;width:80%}
+/* MENSAJES */
+#msg-area{position:absolute;top:15%;width:100%;text-align:center;pointer-events:none;z-index:60}
+.pop-msg{font-size:24px;font-weight:bold;color:#fff;text-shadow:2px 2px 0 #000;animation:fadeUp 2.5s forwards;margin-bottom:5px}
+@keyframes fadeUp{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-50px)}}
+.result-content{text-align:center;color:#fff}
+.btn-ui{background:#d35400;color:#fff;border:2px solid #fff;padding:15px 40px;font-size:18px;margin-top:20px;cursor:pointer;border-radius:5px;font-weight:bold}
+</style>
 </head>
 <body>
 
@@ -26,19 +65,20 @@
 <button id="action-btn">ACCIÓN</button>
 
 <div id="dialog-modal">
-    <div id="dialog-text" style="margin-bottom: 20px; font-style: italic;"></div>
-    <button class="btn-ui" style="padding: 5px 20px; font-size: 14px;" onclick="closeDialog()">Cerrar</button>
+    <div id="dialog-text" style="margin-bottom:20px;font-style:italic"></div>
+    <button class="btn-ui" style="padding:5px 20px;font-size:14px" onclick="closeDialog()">Cerrar</button>
 </div>
 
 <div id="main-menu" class="ui-layer visible">
-    <img src="https://i.postimg.cc/CLxZMqWv/Titulo.png" class="game-title-img" alt="DREADWATER">
+    <img src="https://i.postimg.cc/CLxZMqWv/Titulo.png" class="game-title-img" alt="DREADWATER" onerror="this.style.display='none';document.getElementById('title-txt').style.display='block'">
+    <h1 id="title-txt">DREADWATER</h1>
     <button class="menu-btn btn-play" onclick="startGame()">JUGAR</button>
     <button class="menu-btn" onclick="showSettings()">AJUSTES</button>
     <button class="menu-btn" onclick="showAbout()">ACERCA DE</button>
 </div>
 
 <div id="settings-menu" class="ui-layer">
-    <h2 style="font-size: 30px;">AJUSTES</h2>
+    <h2 style="font-size:30px">AJUSTES</h2>
     <button class="menu-btn" id="btn-music" onclick="toggleSetting('music')">MÚSICA: ON</button>
     <button class="menu-btn" id="btn-ambient" onclick="toggleSetting('ambient')">AMBIENTE: ON</button>
     <button class="menu-btn" id="btn-sound" onclick="toggleSetting('sound')">SONIDO: ON</button>
@@ -47,23 +87,22 @@
 </div>
 
 <div id="about-menu" class="ui-layer">
-    <h2 style="font-size: 30px;">ACERCA DE</h2>
+    <h2 style="font-size:30px">ACERCA DE</h2>
     <div class="about-text">
         Creado por <span class="highlight">DX GAMES</span><br><br>
-        Versión: <span class="highlight">v1.2.5</span><br><br>
+        Versión: <span class="highlight" id="ver"></span><br><br>
         ¡GRACIAS POR JUGAR!
     </div>
     <button class="menu-btn" onclick="showMain()">VOLVER</button>
 </div>
 
-<div id="map-screen" class="ui-layer" onclick="if(event.target === this) closeMap()">
-    <h2 style="margin-top:20px; color:#f1c40f;">MAPA DE NAVEGACIÓN</h2>
-    <canvas id="mapCanvas" style="border: 2px solid #f1c40f; background: #000; margin: 10px; touch-action: none;"></canvas>
-    <div style="color:white; font-size:14px; pointer-events:none;">Toca el fondo oscuro para cerrar</div>
+<div id="map-screen" class="ui-layer" onclick="if(event.target===this)closeMap()">
+    <h2 style="margin-top:20px;color:#f1c40f">MAPA DE NAVEGACIÓN</h2>
+    <canvas id="mapCanvas" style="border:2px solid #f1c40f;background:#000;margin:10px;touch-action:none"></canvas>
+    <button class="btn-ui" style="margin-top:5px;padding:10px 30px" onclick="closeMap()">✖ CERRAR</button>
 </div>
 
 <div class="controls-layer" id="game-controls">
-    
     <div class="control-group-stack">
         <div class="btn" id="btn-anchor">⚓</div>
         <div class="control-group">
@@ -71,18 +110,14 @@
             <div class="btn" id="btn-right">➡️</div>
         </div>
     </div>
-
     <div class="fire-controls" id="fire-controls">
         <div class="btn btn-fire" id="btn-shoot-f" style="visibility:hidden">⬆️💣</div>
-        
-        <div style="display:flex; gap:10px;">
+        <div style="display:flex;gap:10px">
             <div class="btn btn-fire" id="btn-shoot-l">⬅️💣</div>
             <div class="btn btn-fire" id="btn-shoot-r">💣➡️</div>
         </div>
-        
         <div class="btn btn-fire" id="btn-shoot-b" style="visibility:hidden">⬇️💣</div>
     </div>
-
 </div>
 
 <div id="port-screen" class="ui-layer">
@@ -95,11 +130,749 @@
 <div id="result-screen" class="ui-layer">
     <div class="result-content">
         <h1 id="result-title">VICTORIA</h1>
-        <div id="result-loot" style="color: #f1c40f; font-size: 16px; margin: 20px 0;"></div>
+        <div id="result-loot" style="color:#f1c40f;font-size:16px;margin:20px 0"></div>
         <button class="btn-ui" id="btn-continue">CONTINUAR</button>
     </div>
 </div>
 
-<script src="script.js"></script>
+<script>
+// ============================================================
+// DREADWATER - DX GAMES
+// ============================================================
+const VERSION = 'beta 0.1.0';
+document.getElementById('ver').textContent = VERSION;
+
+// === AJUSTES DE BALANCE (todo lo que se toca al balancear está aquí) ===
+const CFG = {
+    radar: 3500,                 // alcance del radar (unidades del mundo)
+    cooldown: 300000,            // enfriamiento de Fantasma y Cazador: 5 min (ms)
+    dayLen: 28800,               // duración de un día completo en frames (8 min a 60 fps)
+    ghostP: 0.00002,             // prob. por frame de que aparezca el Fantasma (solo de noche)
+    hunterGold: 6000,            // oro mínimo para que el Cazador pueda aparecer
+    hunterBaseP: 0.000005,       // prob. por frame del Cazador al llegar a ese oro
+    hunterStepP: 0.0000015,      // lo que sube por cada 1000 de oro extra
+    upg: { sails: { max: 6, cost: 500 }, hull: { max: 8, cost: 300 }, cannons: { max: 8, cost: 500 } }
+};
+const STEP = 1000 / 60;          // el juego corre a 60 actualizaciones/seg sin importar los Hz de la pantalla
+const SAVE_KEY = 'dx_dreadwater_v12_checkpoint_save', HINT_KEY = 'dx_dreadwater_hints';
+
+// === MOTOR ===
+const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
+const mapCanvas = document.getElementById('mapCanvas'), mapCtx = mapCanvas.getContext('2d');
+const CX = () => canvas.width / 2, CY = () => canvas.height / 2;
+function resize() {
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    const s = Math.min(window.innerWidth, window.innerHeight) * 0.9;
+    mapCanvas.width = s; mapCanvas.height = s;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// === FRASES ===
+const PORT_QUOTES = [
+    "¡Bienvenido, marinero! El ron aquí no mata... mucho.",
+    "¿Has visto ese extraño barco negro? Dicen que no tiene tripulación.",
+    "Se rumora que un barco fantasma navega por estas aguas de noche.",
+    "El día de hoy está precioso para que te hundan el barco.",
+    "No te acerques al Abismo Negro si valoras tu alma.",
+    "Vendo mapas, pero todos llevan al mismo lugar: la muerte.",
+    "Dicen que El Cazador huele el oro a millas de distancia.",
+    "¡Cuidado con las rocas! Se mueven cuando no las miras.",
+    "Mi abuelo vio al Fantasma... ahora habla solo con los peces.",
+    "Si buscas gloria, vas al lugar equivocado. Aquí solo hay sal.",
+    "¿Unas monedas para este viejo lobo de mar?",
+    "Asegura tu casco antes de salir, hay mucha piedra suelta.",
+    "La Reina ofrece recompensa por los piratas, ¡qué suerte que eres 'comerciante'!",
+    "No confíes en nadie que no beba ron.",
+    "¡Qué barco tan... pequeño tienes!"
+];
+const POOR_QUOTES = [
+    "Somos muy pobres, el mar se llevó hasta nuestras esperanzas.",
+    "Dios nos ha abandonado en este rincón del mapa.",
+    "Algún día me iré de Desesperanza... si consigo un remo.",
+    "El hambre muerde más fuerte que los tiburones.",
+    "Otro día sin pescado, otro día de rezos vacíos.",
+    "No nos queda ni el orgullo, capitán.",
+    "¿Traes pan? ¿O solo vienes a burlarte de nuestra miseria?",
+    "Aquí el oro es un mito de viejos borrachos.",
+    "Desesperanza es un nombre demasiado optimista para este lugar.",
+    "Mis hijos sueñan con ver un barco de verdad.",
+    "Nuestras redes solo atrapan algas y tristeza.",
+    "No nos mires así, no elegimos nacer en el fango.",
+    "La marea sube, pero nuestra suerte solo baja.",
+    "¿Tienes un poco de ron para olvidar este agujero?",
+    "Moriremos aquí, viendo barcos pasar a lo lejos."
+];
+
+// === ASSETS & AUDIO ===
+const sprites = {}, audio = {};
+let currentMusic = null;
+const SPR = { normal: 'shipSmall', med: 'shipMed', big: 'shipBig', ghost: 'ghost', hunter: 'hunter' };
+
+(function loadAssets() {
+    const imgs = {
+        player: "https://i.postimg.cc/4NZgwxFn/barco_jugador.png",
+        shipSmall: "https://i.postimg.cc/ZKZSj5D4/barco_chico.png",
+        shipMed: "https://i.postimg.cc/02fq41Lv/barco_mediano.png",
+        shipBig: "https://i.postimg.cc/8PHVYgqp/barco_grande.png",
+        hunter: "https://i.postimg.cc/rFJLH2vR/perseguidor.png",
+        ghost: "https://i.postimg.cc/pLLtb1Hz/barco_fantasma.png",
+        rock: "https://i.postimg.cc/4dtg2kQD/isla_de_rocas.png",
+        island: "https://i.postimg.cc/qRnTDVGf/isla.png",
+        portHome: "https://i.postimg.cc/k5LCyXK4/isla_desesperanza.png",
+        portNormal: "https://i.postimg.cc/d1dYNPjf/puertos.png",
+        portBig: "https://i.postimg.cc/Px1gzbd6/puerto_grande.png",
+        minimap: "https://i.postimg.cc/N0FmWYF3/Minimapa.png"
+    };
+    for (const k in imgs) { const im = new Image(); im.onerror = () => { im._err = 1; }; im.src = imgs[k]; sprites[k] = im; }
+    const tracks = {
+        ambient: "https://archive.org/download/sonido-del-mar_202512/Sonido%20del%20Mar.mp3",
+        menu: "https://archive.org/download/the-galeon-of-souls/Menuprincipal.mp3",
+        hunter: "https://archive.org/download/the-galeon-of-souls/Perseguidor.mp3",
+        ghost: "https://archive.org/download/the-galeon-of-souls/The%20Galeon%20of%20Souls.mp3",
+        battleBig: "https://archive.org/download/the-galeon-of-souls/batalla%20grande.mp3",
+        battleSmall: "https://archive.org/download/the-galeon-of-souls/Batalla%20peque%C3%B1a.mp3"
+    };
+    for (const k in tracks) {
+        const a = new Audio(); a.preload = (k === 'menu' || k === 'ambient') ? 'auto' : 'none';
+        a.src = tracks[k]; a.loop = true; audio[k] = a;
+    }
+})();
+
+function playMusic(name) {
+    if (!settings.music) return;
+    if (currentMusic && currentMusic !== audio[name]) { currentMusic.pause(); currentMusic.currentTime = 0; }
+    if (name && audio[name]) { currentMusic = audio[name]; currentMusic.play().catch(() => {}); } else currentMusic = null;
+}
+function stopMusic() { if (currentMusic) { currentMusic.pause(); currentMusic.currentTime = 0; currentMusic = null; } }
+function updateAudioSettings() {
+    if (settings.ambient) audio.ambient.play().catch(() => {}); else audio.ambient.pause();
+    if (!settings.music) stopMusic(); else if (gameState === STATE.MENU) playMusic('menu');
+}
+
+// --- Efectos de sonido (generados con WebAudio, sin archivos) ---
+let AC = null;
+function initAudio() {
+    if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    if (AC && AC.state === 'suspended') AC.resume();
+}
+function tone(f, d, type, vol, endF) {
+    const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime;
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (endF) o.frequency.exponentialRampToValueAtTime(endF, t + d);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + d);
+}
+function noise(d, vol, cutoff) {
+    const n = Math.floor(AC.sampleRate * d), buf = AC.createBuffer(1, n, AC.sampleRate), data = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
+    const s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(), t = AC.currentTime;
+    s.buffer = buf; f.type = 'lowpass'; f.frequency.value = cutoff;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+    s.connect(f); f.connect(g); g.connect(AC.destination); s.start(t);
+}
+function sfx(name) {
+    if (!settings.sound || !AC) return;
+    try {
+        if (name === 'cannon') { noise(0.25, 0.5, 700); tone(130, 0.2, 'sine', 0.5, 40); }
+        else if (name === 'hit') noise(0.15, 0.4, 1400);
+        else if (name === 'bump') tone(90, 0.12, 'triangle', 0.4, 50);
+        else if (name === 'coin') { tone(880, 0.1, 'square', 0.12); setTimeout(() => { try { tone(1320, 0.15, 'square', 0.12); } catch (e) {} }, 90); }
+        else if (name === 'sink') { tone(220, 0.9, 'sawtooth', 0.2, 40); noise(0.6, 0.3, 500); }
+    } catch (e) {}
+}
+
+// === ESTADO ===
+const STATE = { MENU: 0, ROAMING: 1, BATTLE: 2, PORT: 3, SINKING: 4, MAP: 5 };
+let gameState = STATE.MENU, gameTime = 0, dayClock = 0, wasNight = false;
+let hunterCD = 0, ghostCD = 0, resolving = false, lastBattleType = null, lostGold = 0, currentAction = null;
+const settings = { vibrate: true, music: true, ambient: true, sound: true };
+let mapCam = { x: 0, y: 0, zoom: 1 };
+let mapDrag = { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0, dist: 0 };
+
+const player = {
+    gX: 180, gY: 0, angle: Math.PI / 2, speed: 0, baseMaxSpeed: 1.9, accel: 0.03,
+    hp: 100, maxHp: 100, isSailing: false, savedPos: { x: 180, y: 0 }, savedPosBattle: { x: 180, y: 0 },
+    inventory: { gold: 50, rum: 10 }, reloadTimer: 0, mapCount: 0, rumConsumptionTimer: 0, spawnPort: "Desesperanza",
+    upgrades: { sails: 0, hull: 0, cannons: 0, frontCannon: false, rearCannon: false }
+};
+const maxSpeed = () => player.baseMaxSpeed + player.upgrades.sails * 0.4;
+
+// === MAPA FIJO ===
+const ports = [
+    ["Desesperanza", 0, 0, 'home'], ["Pto. Ahogado", 4500, 3200], ["Cala Feliz", -5200, 1200], ["Isla Tortuga", 1200, -6500],
+    ["Refugio Pirata", -3000, -4800], ["Bahía Sucia", 8000, -1500], ["Punta Sangre", -9000, -2000], ["Cala Viuda", 6000, 7000],
+    ["Port Royal", -7500, 8500], ["Abismo Negro", 12000, 4000], ["Roca Ron", -14000, -5000], ["Cala Loro", 10000, -12000],
+    ["Bahía Botín", -11000, 15000], ["Pto. Huesos", 20000, 20000], ["Isla Sed", -22000, -18000], ["Paso Muerte", 35000, -5000],
+    ["Cala Fortuna", -40000, 25000], ["Pto. Calavera", 15000, -30000], ["Bahía Tormenta", -25000, 45000],
+    ["Isla Olvidada", 50000, 50000], ["Cabo Esperanza", -60000, -60000]
+].map(([name, x, y, type = 'normal']) => ({ name, x, y, radius: 110, type }));
+
+let enemies = [], rocks = [], islands = [], projectiles = [], wakeParticles = [], explosions = [];
+let battleEnemy = null, sinkingEnemy = null, treasureSites = [], currentPort = null;
+const waves = [];
+for (let i = 0; i < 60; i++) waves.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, offset: Math.random() * 100 });
+
+const keys = { Left: false, Right: false };
+const $ = id => document.getElementById(id);
+const ui = {
+    mainMenu: $('main-menu'), settingsMenu: $('settings-menu'), aboutMenu: $('about-menu'), mapScreen: $('map-screen'),
+    actionBtn: $('action-btn'), portScreen: $('port-screen'), controls: $('game-controls'), fireControls: $('fire-controls'),
+    btnShootL: $('btn-shoot-l'), btnShootR: $('btn-shoot-r'), btnShootF: $('btn-shoot-f'), btnShootB: $('btn-shoot-b'),
+    anchorBtn: $('btn-anchor'), resultScreen: $('result-screen'), portContent: $('port-content'), portTitle: $('port-title')
+};
+const fireBtns = [ui.btnShootL, ui.btnShootR, ui.btnShootF, ui.btnShootB];
+ui.actionBtn.onclick = () => { if (currentAction) currentAction(); };
+
+// === DÍA / NOCHE ===
+function darkness() { const s = Math.cos(dayClock / CFG.dayLen * Math.PI * 2); return Math.max(0, Math.min(1, 0.2 - s)); }
+const isNight = () => darkness() > 0.6;
+
+// === GUARDADO ===
+function saveGame(silent) {
+    const d = { gold: player.inventory.gold, rum: player.inventory.rum, spawnX: player.savedPos.x, spawnY: player.savedPos.y,
+        port: player.spawnPort, upgrades: player.upgrades, maps: player.mapCount, treasures: treasureSites };
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(d)); } catch (e) {}
+    if (!silent) showMsg("¡CHECKPOINT GUARDADO!", "#2ecc71");
+}
+function loadGame() {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) {}
+    if (!d) return false;
+    const n = (v, def) => Number.isFinite(v) ? v : def;
+    player.inventory.gold = n(d.gold, 50); player.inventory.rum = n(d.rum, 10);
+    player.savedPos.x = n(d.spawnX, 180); player.savedPos.y = n(d.spawnY, 0);
+    player.gX = player.savedPos.x; player.gY = player.savedPos.y;
+    player.spawnPort = d.port || "Desesperanza";
+    const u = d.upgrades || {};
+    for (const k in CFG.upg) player.upgrades[k] = Math.min(CFG.upg[k].max, Math.max(0, n(u[k], 0)));
+    player.upgrades.frontCannon = !!u.frontCannon; player.upgrades.rearCannon = !!u.rearCannon;
+    player.mapCount = Math.max(0, n(d.maps, 0));
+    treasureSites = Array.isArray(d.treasures) ? d.treasures : [];
+    return true;
+}
+
+// === MENÚS ===
+function startGame() {
+    hideAllMenus(); initAudio(); loadGame(); ui.controls.style.display = 'flex'; gameState = STATE.ROAMING;
+    updateAudioSettings(); playMusic(null); showMsg("¡DREADWATER TE ESPERA!", "#f1c40f"); showHints();
+}
+function showHints() {
+    let seen = null;
+    try { seen = localStorage.getItem(HINT_KEY); localStorage.setItem(HINT_KEY, '1'); } catch (e) {}
+    if (seen) return;
+    ["⚓ Toca el ancla para zarpar", "🛌 Descansa en un puerto para guardar", "🗺️ Toca el minimapa para ver el mapa"]
+        .forEach((t, i) => setTimeout(() => showMsg(t, "#ecf0f1"), 2300 * (i + 1)));
+}
+function showSettings() { hideAllMenus(); ui.settingsMenu.classList.add('visible'); }
+function showAbout() { hideAllMenus(); ui.aboutMenu.classList.add('visible'); }
+function showMain() { hideAllMenus(); ui.mainMenu.classList.add('visible'); playMusic('menu'); }
+function hideAllMenus() { [ui.mainMenu, ui.settingsMenu, ui.aboutMenu, ui.mapScreen].forEach(e => e.classList.remove('visible')); }
+function toggleSetting(k) {
+    settings[k] = !settings[k]; initAudio();
+    const label = { music: 'MÚSICA', ambient: 'AMBIENTE', sound: 'SONIDO', vibrate: 'VIBRACIÓN' }[k];
+    $('btn-' + k).innerText = `${label}: ${settings[k] ? 'ON' : 'OFF'}`;
+    if (k === 'music' || k === 'ambient') updateAudioSettings();
+    if (k === 'vibrate') vibrate(50);
+    if (k === 'sound') sfx('coin');
+}
+function vibrate(ms) { if (settings.vibrate && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) {} } }
+function closeDialog() { $('dialog-modal').style.display = 'none'; }
+
+// === MAPA AMPLIADO ===
+function openMap() { gameState = STATE.MAP; ui.controls.style.display = 'none'; ui.actionBtn.style.display = 'none'; ui.mapScreen.classList.add('visible'); mapCam = { x: 0, y: 0, zoom: 1 }; drawFullMap(); }
+function closeMap() { ui.mapScreen.classList.remove('visible'); ui.controls.style.display = 'flex'; gameState = STATE.ROAMING; }
+mapCanvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (e.touches.length === 1) { mapDrag.active = true; mapDrag.startX = e.touches[0].clientX; mapDrag.startY = e.touches[0].clientY; mapDrag.lastX = mapCam.x; mapDrag.lastY = mapCam.y; }
+    else if (e.touches.length === 2) mapDrag.dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+}, { passive: false });
+mapCanvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 1 && mapDrag.active) {
+        mapCam.x = mapDrag.lastX + e.touches[0].clientX - mapDrag.startX; mapCam.y = mapDrag.lastY + e.touches[0].clientY - mapDrag.startY; drawFullMap();
+    } else if (e.touches.length === 2) {
+        const nd = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        mapCam.zoom = Math.max(0.5, Math.min(5, mapCam.zoom + (nd - mapDrag.dist) * 0.01)); mapDrag.dist = nd; drawFullMap();
+    }
+}, { passive: false });
+mapCanvas.addEventListener('touchend', () => { mapDrag.active = false; });
+
+function drawTriangle(c, x, y, size, angle) {
+    c.save(); c.translate(x, y); c.rotate(angle); c.beginPath();
+    c.moveTo(0, -size); c.lineTo(size / 1.5, size); c.lineTo(-size / 1.5, size); c.closePath();
+    c.fillStyle = "#bdc3c7"; c.fill(); c.lineWidth = 1; c.strokeStyle = "black"; c.stroke(); c.restore();
+}
+function drawFullMap() {
+    mapCtx.fillStyle = "#1a252f"; mapCtx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
+    mapCtx.save();
+    const cx = mapCanvas.width / 2, cy = mapCanvas.height / 2, z = mapCam.zoom;
+    mapCtx.translate(cx + mapCam.x, cy + mapCam.y); mapCtx.scale(z, z); mapCtx.translate(-cx, -cy);
+    const scale = cx / 70000;   // el mundo real llega a ~60000
+    ports.forEach(p => {
+        const mx = cx + p.x * scale, my = cy + p.y * scale;
+        mapCtx.fillStyle = p.type === 'home' ? "#f1c40f" : "#ecf0f1";
+        mapCtx.beginPath(); mapCtx.arc(mx, my, 3 / z, 0, Math.PI * 2); mapCtx.fill();
+        mapCtx.fillStyle = "#bdc3c7"; mapCtx.font = `${10 / z}px monospace`; mapCtx.textAlign = "center"; mapCtx.fillText(p.name, mx, my - 6 / z);
+    });
+    treasureSites.forEach(t => {
+        if (!t.active) return;
+        const mx = cx + t.x * scale, my = cy + t.y * scale;
+        mapCtx.textAlign = "center"; mapCtx.font = `${16 / z}px Arial`; mapCtx.fillText("🏝️", mx, my + 5 / z);
+        mapCtx.fillStyle = "red"; mapCtx.font = `bold ${14 / z}px Arial`; mapCtx.fillText("X", mx, my + 5 / z);
+    });
+    drawTriangle(mapCtx, cx + player.gX * scale, cy + player.gY * scale, 8 / z, player.angle);
+    mapCtx.restore();
+}
+canvas.addEventListener('pointerdown', e => {
+    if (gameState !== STATE.ROAMING) return;
+    const r = canvas.getBoundingClientRect();
+    if (e.clientX - r.left > canvas.width - 160 && e.clientY - r.top < 175) openMap();
+});
+
+// === UTILIDADES ===
+function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+function showMsg(text, color) {
+    const el = document.createElement('div'); el.className = 'pop-msg'; el.innerText = text; el.style.color = color || 'white';
+    $('msg-area').appendChild(el); setTimeout(() => el.remove(), 2500);
+}
+function spawnExplosion(x, y, color) {
+    for (let i = 0; i < 20; i++) explosions.push({ x, y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, size: Math.floor(Math.random() * 8 + 4), life: 1.5, color: color || '#e67e22' });
+}
+// Empuja al jugador fuera de un círculo; devuelve true si hubo choque
+function pushOut(x, y, minD, keepD, spd) {
+    if (dist(player.gX, player.gY, x, y) >= minD) return false;
+    const a = Math.atan2(player.gY - y, player.gX - x);
+    player.gX = x + Math.cos(a) * keepD; player.gY = y + Math.sin(a) * keepD; player.speed = spd;
+    return true;
+}
+
+// === SPAWNS ===
+function updateProceduralSpawns() {
+    if (gameState !== STATE.ROAMING) return;
+    if (hunterCD > 0) hunterCD -= STEP;
+    if (ghostCD > 0) ghostCD -= STEP;
+    const hasType = t => enemies.some(e => e.type === t), ang = () => Math.random() * Math.PI * 2;
+    const gold = player.inventory.gold;
+
+    // EL CAZADOR: desde 6000 de oro, probabilidad bajísima que sube muy poco cada 1000
+    if (gold >= CFG.hunterGold && hunterCD <= 0 && !hasType('hunter')) {
+        const p = CFG.hunterBaseP + CFG.hunterStepP * Math.floor((gold - CFG.hunterGold) / 1000);
+        if (Math.random() < p) {
+            const a = ang();
+            enemies.push({ x: player.gX + Math.cos(a) * 1500, y: player.gY + Math.sin(a) * 1500, angle: ang(), hp: 500, maxHp: 500, size: 25, type: 'hunter', reload: 50, canFlee: false, speed: 2.0 });
+            showMsg("¡EL CAZADOR!", "#c0392b");
+        }
+    }
+    // EL FANTASMA: solo de noche, probabilidad muy baja, no se puede escapar
+    if (isNight() && ghostCD <= 0 && !hasType('ghost') && Math.random() < CFG.ghostP) {
+        const a = ang();
+        enemies.push({ x: player.gX + Math.cos(a) * 2200, y: player.gY + Math.sin(a) * 2200, angle: ang(), hp: 1000, maxHp: 1000, size: 35, type: 'ghost', reload: 60, canFlee: false, noEscape: true, speed: 2.2 });
+        showMsg("¡SENTIRÁS EL FRÍO!", "#2ecc71");
+    }
+    // Barcos normales
+    if (enemies.length < 8) {
+        const a = ang(), r = Math.random();
+        let type = 'normal', size = 20, hp = 50, canFlee = true, spd = 0.8;
+        if (r < 0.2) { type = 'big'; size = 30; hp = 150; canFlee = Math.random() < 0.3; spd = 1.0; }
+        else if (r < 0.5) { type = 'med'; size = 25; hp = 100; canFlee = Math.random() < 0.3; spd = 1.2; }
+        enemies.push({ x: player.gX + Math.cos(a) * 1800, y: player.gY + Math.sin(a) * 1800, angle: ang(), hp, maxHp: hp, size, type, reload: 60, canFlee, speed: spd });
+    }
+    if (rocks.length < 12) { const a = ang(); rocks.push({ x: player.gX + Math.cos(a) * 1500, y: player.gY + Math.sin(a) * 1500, size: 50 }); }
+    if (islands.length < 4) { const a = ang(); islands.push({ x: player.gX + Math.cos(a) * 2500, y: player.gY + Math.sin(a) * 2500, radius: 80 + Math.random() * 40 }); }
+    if (treasureSites.length < player.mapCount) {
+        const a = ang(), d = 4000 + Math.random() * 3000;
+        treasureSites.push({ x: player.gX + Math.cos(a) * d, y: player.gY + Math.sin(a) * d, active: true, radius: 100 });
+    }
+    // LIMPIEZA: el Cazador te pierde si sale del radar; el Fantasma nunca se va
+    const hunter = enemies.find(e => e.type === 'hunter');
+    if (hunter && dist(player.gX, player.gY, hunter.x, hunter.y) > CFG.radar) { hunterCD = CFG.cooldown; showMsg("El Cazador te perdió de vista", "#3498db"); }
+    enemies = enemies.filter(e => e.type === 'ghost' || dist(player.gX, player.gY, e.x, e.y) < (e.type === 'hunter' ? CFG.radar : 5000));
+    rocks = rocks.filter(r => dist(player.gX, player.gY, r.x, r.y) < 4000);
+    islands = islands.filter(i => dist(player.gX, player.gY, i.x, i.y) < 7000);
+    treasureSites = treasureSites.filter(t => t.active || dist(player.gX, player.gY, t.x, t.y) < 2000);
+}
+
+// === BATALLA ===
+function startBattle(e) {
+    if (isNaN(e.x)) return;
+    resolving = false; lastBattleType = e.type;
+    player.savedPosBattle = { x: player.gX, y: player.gY }; gameState = STATE.BATTLE;
+    player.gX = 100000; player.gY = 100000; player.angle = 0; player.speed = 0.5;
+    player.isSailing = false; ui.anchorBtn.classList.remove('sailing'); ui.actionBtn.style.display = 'none'; currentAction = null;
+    projectiles = []; sinkingEnemy = null;
+    battleEnemy = { ...e, x: 100000, y: 99600, angle: Math.PI, reload: 60 };
+    enemies = [battleEnemy]; ui.fireControls.style.display = 'flex'; showMsg("¡A LAS ARMAS!", "#e74c3c");
+    ui.btnShootF.style.visibility = player.upgrades.frontCannon ? 'visible' : 'hidden';
+    ui.btnShootB.style.visibility = player.upgrades.rearCannon ? 'visible' : 'hidden';
+    let track = 'battleSmall';
+    if (e.type === 'big' || e.type === 'med') track = 'battleBig';
+    if (e.type === 'hunter') track = 'hunter';
+    if (e.type === 'ghost') track = 'ghost';
+    playMusic(track);
+}
+
+function triggerSinking(win) {
+    if (resolving) return;
+    resolving = true;
+    if (!win) { playerDefeat(); return; }
+    gameState = STATE.SINKING; ui.fireControls.style.display = 'none'; projectiles = [];
+    sinkingEnemy = { ...battleEnemy, alpha: 1, scale: 1 };
+    spawnExplosion(sinkingEnemy.x, sinkingEnemy.y, '#e74c3c'); sfx('sink');
+    let gold, rum, maps = 0, msg = "¡VICTORIA!";
+    const t = battleEnemy.type;
+    if (t === 'ghost') { gold = 10000; rum = 100; maps = 3; msg = "¡FANTASMA HUNDIDO!"; }
+    else if (t === 'hunter') { gold = 2000; rum = Math.floor(Math.random() * 11) + 10; maps = 1; }
+    else if (t === 'big') { gold = 150; rum = Math.floor(Math.random() * 6) + 5; if (Math.random() < 0.1) maps = 1; }
+    else if (t === 'med') { gold = 100; rum = Math.floor(Math.random() * 5) + 1; if (Math.random() < 0.05) maps = 1; }
+    else { gold = 50; rum = Math.floor(Math.random() * 3) + 1; if (Math.random() < 0.01) maps = 1; }
+    if (maps > 0) { player.mapCount += maps; showMsg("¡MAPA ENCONTRADO!", "#9b59b6"); }
+    battleEnemy = null; enemies = [];
+    setTimeout(() => endBattle(true, false, null, gold, rum, maps, msg), 3000);
+}
+
+// Derrota o naufragio: pierdes TODAS las mejoras y la mitad del oro, y vuelves a tu último puerto
+function playerDefeat() {
+    resolving = true;
+    const g = player.inventory.gold;
+    player.inventory.gold = Math.floor(g / 2); lostGold = g - player.inventory.gold;
+    player.upgrades = { sails: 0, hull: 0, cannons: 0, frontCannon: false, rearCannon: false };
+    player.hp = player.maxHp;
+    saveGame(true); sfx('sink'); vibrate(400);
+    endBattle(false, false);
+}
+
+function endBattle(win, escaped, whoEscaped, gold = 0, rum = 0, maps = 0, winMsg = "") {
+    gameState = STATE.PORT; ui.controls.style.display = 'none'; ui.fireControls.style.display = 'none';
+    ui.resultScreen.classList.add('visible'); playMusic(null);
+    if (lastBattleType === 'ghost') ghostCD = CFG.cooldown;      // enfriamiento de 5 min
+    if (lastBattleType === 'hunter') hunterCD = CFG.cooldown;
+    lastBattleType = null;
+    const title = $('result-title'), loot = $('result-loot'), btn = $('btn-continue');
+    if (escaped) { title.innerText = "FIN DEL COMBATE"; title.style.color = "#3498db"; loot.innerHTML = whoEscaped === 'player' ? "HAS ESCAPADO" : "EL ENEMIGO ESCAPÓ"; }
+    else if (win) {
+        title.innerText = winMsg || "¡VICTORIA!"; title.style.color = "#f1c40f";
+        player.inventory.gold += gold; player.inventory.rum += rum;
+        loot.innerHTML = `Botín:<br>💰 ${gold} Oro<br>🍾 ${rum} Ron<br>🗺️ ${maps} Mapas`;
+    } else {
+        title.innerText = "¡DERROTA!"; title.style.color = "#c0392b";
+        loot.innerHTML = `Barco hundido.<br>Pierdes todas tus mejoras<br>y ${lostGold} de oro.<br>Regresas a tu último puerto.`;
+    }
+    btn.onclick = () => {
+        if (win || escaped) { player.gX = player.savedPosBattle.x; player.gY = player.savedPosBattle.y; }
+        else { player.gX = player.savedPos.x; player.gY = player.savedPos.y; player.speed = 0; player.isSailing = false; ui.anchorBtn.classList.remove('sailing'); }
+        enemies = []; rocks = []; islands = []; projectiles = []; sinkingEnemy = null; battleEnemy = null; resolving = false;
+        keys.Left = keys.Right = false;
+        gameState = STATE.ROAMING; ui.resultScreen.classList.remove('visible'); ui.controls.style.display = 'flex';
+    };
+}
+
+// === PUERTO / ASTILLERO ===
+function renderPortMenu(screen, msg, col) {
+    const U = CFG.upg, lv = player.upgrades;
+    const stats = `<div class="port-stats">💰 ${player.inventory.gold} &nbsp;&nbsp; 🍾 ${player.inventory.rum}</div>`;
+    const say = def => `<div class="npc-text"${col ? ` style="color:${col}"` : ''}>${msg || def}</div>`;
+    const row = (k, icon, name) => lv[k] >= U[k].max
+        ? `<div class="port-option" style="opacity:.6"><span>${icon} ${name} (${lv[k]}/${U[k].max})</span><span>MAX</span></div>`
+        : `<div class="port-option" onclick="buyUpgrade('${k}')"><span>${icon} ${name} (${lv[k]}/${U[k].max})</span><span>${U[k].cost}G</span></div>`;
+    let h = stats;
+    if (screen === 'main') {
+        h += say("") + `<div class="port-option" onclick="talkDialog()"><span>🗣️ Hablar</span></div>
+            <div class="port-option" onclick="renderPortMenu('tavern')"><span>🍺 Taberna</span></div>
+            <div class="port-option" onclick="renderPortMenu('shipyard')"><span>🛠️ Astillero</span></div>
+            <div class="port-option" onclick="restInPort()"><span>🛌 Descansar (guardar)</span></div>
+            <div class="port-option active" onclick="exitPort()"><span>⛵ ZARPAR</span></div>`;
+    } else if (screen === 'tavern') {
+        h += say('"¿Una copa?"') + `<div class="port-option" onclick="buyRum()"><span>🥃 Comprar Ron (+5)</span><span>10G</span></div>
+            <div class="port-option active" onclick="renderPortMenu('main')"><span>🔙 Volver</span></div>`;
+    } else if (screen === 'shipyard') {
+        const costRep = Math.floor(player.maxHp - player.hp);
+        h += say('"¿Mejoras?"') + `<div class="port-option" onclick="repairShip()"><span>🔨 Reparar</span><span>${costRep}G</span></div>`
+            + row('sails', '🚩', 'Velas') + row('hull', '🛡️', 'Casco') + row('cannons', '💣', 'Cañón');
+        if (!lv.frontCannon) h += `<div class="port-option" onclick="buyWeapon('front')"><span>🔴 Cañón Frontal</span><span>1000G</span></div>`;
+        if (!lv.rearCannon) h += `<div class="port-option" onclick="buyWeapon('rear')"><span>⚫ Cañón Trasero</span><span>1000G</span></div>`;
+        h += `<div class="port-option active" onclick="renderPortMenu('main')"><span>🔙 Volver</span></div>`;
+    }
+    ui.portContent.innerHTML = h;
+}
+function buyUpgrade(k) {
+    const u = CFG.upg[k];
+    if (player.upgrades[k] >= u.max) return renderPortMenu('shipyard', 'Ya está al máximo', '#f39c12');
+    if (player.inventory.gold < u.cost) return renderPortMenu('shipyard', 'Oro insuficiente', '#e74c3c');
+    player.inventory.gold -= u.cost; player.upgrades[k]++; sfx('coin'); renderPortMenu('shipyard', '¡Mejora instalada!', '#2ecc71');
+}
+function buyWeapon(pos) {
+    if (player.inventory.gold < 1000) return renderPortMenu('shipyard', 'Oro insuficiente', '#e74c3c');
+    player.inventory.gold -= 1000; if (pos === 'front') player.upgrades.frontCannon = true; else player.upgrades.rearCannon = true;
+    sfx('coin'); renderPortMenu('shipyard', '¡Cañón instalado!', '#2ecc71');
+}
+function buyRum() {
+    if (player.inventory.gold < 10) return renderPortMenu('tavern', 'Oro insuficiente', '#e74c3c');
+    player.inventory.gold -= 10; player.inventory.rum += 5; sfx('coin'); renderPortMenu('tavern', '¡Ron!', '#2ecc71');
+}
+function repairShip() {
+    if (player.hp >= player.maxHp) return renderPortMenu('shipyard', 'Tu barco está intacto', '#f39c12');
+    const c = Math.floor(player.maxHp - player.hp);
+    if (player.inventory.gold < c) return renderPortMenu('shipyard', 'Oro insuficiente', '#e74c3c');
+    player.inventory.gold -= c; player.hp = player.maxHp; sfx('coin'); renderPortMenu('shipyard', '¡Barco reparado!', '#2ecc71');
+}
+function restInPort() {
+    player.savedPos.x = player.gX; player.savedPos.y = player.gY; player.spawnPort = currentPort.name; saveGame(true);
+    renderPortMenu('main', '✔ Checkpoint guardado aquí', '#2ecc71');
+}
+function talkDialog() {
+    const pool = (currentPort && currentPort.name === 'Desesperanza') ? POOR_QUOTES : PORT_QUOTES;
+    $('dialog-text').innerText = `"${pool[Math.floor(Math.random() * pool.length)]}"`; $('dialog-modal').style.display = 'block';
+}
+function enterPort(port) {
+    currentPort = port; gameState = STATE.PORT; player.speed = 0; player.isSailing = false; ui.anchorBtn.classList.remove('sailing');
+    ui.actionBtn.style.display = 'none'; currentAction = null; ui.controls.style.display = 'none'; ui.portScreen.classList.add('visible');
+    ui.portTitle.innerText = port.name; renderPortMenu('main');
+}
+function exitPort() { ui.portScreen.classList.remove('visible'); ui.controls.style.display = 'flex'; gameState = STATE.ROAMING; }
+
+function dig(t) {
+    if (!t.active) return;
+    const g = Math.floor(Math.random() * 4501) + 500;
+    player.inventory.gold += g; player.inventory.rum += 20; t.active = false; player.mapCount--;
+    if (Math.random() < 0.1) { player.mapCount++; showMsg("¡OTRO MAPA ENCONTRADO!", "#9b59b6"); }
+    showMsg(`+${g} ORO / +20 RON`, "#f1c40f"); sfx('coin');
+}
+
+// === UPDATE ===
+let lastReloading = false;
+function update() {
+    if (gameState !== STATE.MENU) dayClock++;
+    gameTime += 0.05;
+    updateProceduralSpawns();
+    if (player.reloadTimer > 0) player.reloadTimer--;
+
+    if (gameState === STATE.ROAMING) {
+        const n = isNight();
+        if (n !== wasNight) { wasNight = n; showMsg(n ? "🌙 CAE LA NOCHE" : "☀️ AMANECE", n ? "#9b9bff" : "#f1c40f"); }
+        if (player.isSailing && ++player.rumConsumptionTimer > 1800) { if (player.inventory.rum > 0) player.inventory.rum--; player.rumConsumptionTimer = 0; }
+    }
+
+    if (gameState === STATE.ROAMING || gameState === STATE.BATTLE) {
+        let spd = maxSpeed() * Math.max(0.4, player.hp / player.maxHp);
+        if (player.inventory.rum <= 0) spd *= 0.5;
+        if (player.isSailing && player.speed < spd) player.speed += player.accel;
+        else if (!player.isSailing && player.speed > 0) player.speed -= 0.05;
+        if (keys.Left) player.angle -= 0.035;
+        if (keys.Right) player.angle += 0.035;
+        player.gX += Math.sin(player.angle) * player.speed; player.gY -= Math.cos(player.angle) * player.speed;
+        if (isNaN(player.speed)) player.speed = 0;
+        if (player.speed > 0.3) wakeParticles.push({ x: player.gX - Math.sin(player.angle) * 30, y: player.gY + Math.cos(player.angle) * 30, life: 1, size: Math.random() * 3 + 3 });
+    }
+    wakeParticles.forEach(p => p.life -= 0.02); wakeParticles = wakeParticles.filter(p => p.life > 0);
+    explosions.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 0.02; }); explosions = explosions.filter(p => p.life > 0);
+    if (sinkingEnemy) { sinkingEnemy.alpha = Math.max(0, sinkingEnemy.alpha - 0.006); sinkingEnemy.scale = Math.max(0.3, sinkingEnemy.scale - 0.004); sinkingEnemy.angle += 0.012; }
+
+    if (gameState === STATE.ROAMING) {
+        let inRange = false; currentAction = null;
+        ports.forEach(p => {
+            const d = dist(player.gX, player.gY, p.x, p.y);
+            pushOut(p.x, p.y, p.radius + 10, p.radius + 11, -0.3);
+            if (d < 350 && player.speed < 1.5) { ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "⚓ AMARRAR"; currentAction = () => enterPort(p); inRange = true; }
+        });
+        treasureSites.forEach(t => {
+            if (!t.active) return;
+            pushOut(t.x, t.y, t.radius - 20, t.radius - 15, -0.5);
+            if (dist(player.gX, player.gY, t.x, t.y) < 300) { ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "💎 EXCAVAR"; currentAction = () => dig(t); inRange = true; }
+        });
+        if (!inRange) ui.actionBtn.style.display = 'none';
+        islands.forEach(i => pushOut(i.x, i.y, i.radius - 20, i.radius - 15, -0.5));
+        rocks.forEach(r => {
+            if (!pushOut(r.x, r.y, r.size - 15, r.size, -0.8)) return;
+            player.hp -= 1; vibrate(100); sfx('bump');
+            if (player.hp <= 0 && !resolving) { resolving = true; gameState = STATE.SINKING; showMsg("¡NAUFRAGIO!", "#c0392b"); setTimeout(playerDefeat, 2000); }
+        });
+        enemies.forEach(e => {
+            if (e.type === 'hunter' || e.type === 'ghost') {
+                if (e.type === 'ghost') e.speed = Math.max(2.2, maxSpeed() + 0.25);    // siempre más rápido que tú
+                const targetA = Math.atan2(player.gX - e.x, -(player.gY - e.y));
+                let diff = targetA - e.angle; while (diff < -Math.PI) diff += Math.PI * 2; while (diff > Math.PI) diff -= Math.PI * 2; e.angle += diff * 0.05;
+            }
+            e.x += Math.sin(e.angle) * e.speed; e.y -= Math.cos(e.angle) * e.speed;
+            if (gameState === STATE.ROAMING && dist(e.x, e.y, player.gX, player.gY) < 60 + e.size) startBattle(e);
+        });
+    } else if (gameState === STATE.BATTLE && battleEnemy) {
+        const b = battleEnemy, dToP = dist(player.gX, player.gY, b.x, b.y);
+        if (dToP < 55) {
+            vibrate(100); sfx('hit'); player.hp -= 10; b.hp -= 10; player.speed = -0.2; b.speed = -0.2;
+            const a = Math.atan2(b.y - player.gY, b.x - player.gX);
+            player.gX -= Math.cos(a) * 8; player.gY -= Math.sin(a) * 8; b.x += Math.cos(a) * 8; b.y += Math.sin(a) * 8;
+            if (player.hp <= 0) triggerSinking(false); else if (b.hp <= 0) triggerSinking(true);
+            if (resolving) return;
+        }
+        // Escapar: el Fantasma no deja escapar; el Cazador solo si sales de su radar; el resto a 900
+        if (b.noEscape) {
+            if (dToP > 700) { const a = Math.atan2(b.y - player.gY, b.x - player.gX); b.x = player.gX + Math.cos(a) * 450; b.y = player.gY + Math.sin(a) * 450; }
+        } else if (dToP > (b.type === 'hunter' ? CFG.radar : 900)) {
+            endBattle(false, true, (b.hp < b.maxHp * 0.25 && b.canFlee) ? 'enemy' : 'player'); return;
+        }
+        const eBase = b.noEscape ? Math.max(b.speed, maxSpeed() + 0.25) : b.speed;
+        const eSpd = eBase * Math.max(0.4, b.hp / b.maxHp);
+        let targetAngle = Math.atan2(-(player.gX - b.x), player.gY - b.y) + Math.PI;
+        if (dToP < 150) targetAngle += 1.5; else if (b.hp < b.maxHp * 0.25 && b.canFlee) targetAngle += Math.PI;
+        let diff = targetAngle - b.angle; while (diff < -Math.PI) diff += Math.PI * 2; while (diff > Math.PI) diff -= Math.PI * 2; b.angle += diff * 0.05;
+        b.x += Math.sin(b.angle) * eSpd; b.y -= Math.cos(b.angle) * eSpd;
+
+        if (b.reload-- <= 0 && dToP < 400) {
+            const dx = player.gX - b.x, dy = player.gY - b.y;
+            const side = dx * Math.cos(b.angle) + dy * Math.sin(b.angle), fwd = dx * Math.sin(b.angle) - dy * Math.cos(b.angle);
+            let shot = false;
+            const sh = (off, sp) => { const a = b.angle + off; projectiles.push({ x: b.x, y: b.y, vx: Math.sin(a) * sp, vy: -Math.cos(a) * sp, life: 60, hostile: true, damage: 10 }); shot = true; };
+            if (b.type === 'big' || b.type === 'hunter' || b.type === 'ghost') { if (fwd > 50) sh(0, 7); else if (fwd < -50) sh(Math.PI, 7); }
+            if (side > 50) sh(1.57, 6.5); else if (side < -50) sh(-1.57, 6.5);
+            if (shot) { b.reload = 60 + Math.random() * 40; sfx('cannon'); }
+        }
+    }
+
+    projectiles.forEach(p => {
+        p.x += p.vx; p.y += p.vy; p.life--;
+        if (p.hostile && gameState === STATE.BATTLE && dist(p.x, p.y, player.gX, player.gY) < 18) {
+            player.hp -= Math.max(1, p.damage - player.upgrades.hull); p.life = 0;
+            spawnExplosion(p.x, p.y, '#7f8c8d'); vibrate(200); sfx('hit'); if (player.hp <= 0) triggerSinking(false);
+        }
+        if (!p.hostile && battleEnemy && dist(p.x, p.y, battleEnemy.x, battleEnemy.y) < 25) {
+            battleEnemy.hp -= 10 + player.upgrades.cannons; p.life = 0;
+            spawnExplosion(p.x, p.y, '#7f8c8d'); sfx('hit'); if (battleEnemy.hp <= 0) triggerSinking(true);
+        }
+    });
+    projectiles = projectiles.filter(p => p.life > 0);
+
+    const rl = player.reloadTimer > 0 && gameState === STATE.BATTLE;
+    if (rl !== lastReloading) { lastReloading = rl; fireBtns.forEach(b => b.classList.toggle('reloading', rl)); }
+}
+
+// === DIBUJO ===
+function drawSprite(key, x, y, size, angle, alpha = 1, isStatic = false, fb = '#7f8c8d') {
+    const img = sprites[key]; if (!img) return;
+    const ok = img.complete && img.naturalWidth > 0;
+    if (!ok && !img._err) return;                       // aún cargando
+    ctx.save(); ctx.translate(x, y); ctx.rotate(angle + (isStatic ? 0 : Math.PI)); ctx.globalAlpha = alpha;
+    if (ok) ctx.drawImage(img, -size / 2, -size / 2, size, size);
+    else {                                              // respaldo si la imagen no carga
+        ctx.fillStyle = fb; ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.beginPath();
+        if (isStatic) ctx.arc(0, 0, size / 2.6, 0, 7); else ctx.ellipse(0, 0, size / 4, size / 2.4, 0, 0, 7);
+        ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+}
+const FB = { shipSmall: '#ecf0f1', shipMed: '#ecf0f1', shipBig: '#ecf0f1', ghost: '#2ecc71', hunter: '#2c3e50', player: '#f1c40f', rock: '#7f8c8d', island: '#27ae60', portHome: '#d4ac0d', portNormal: '#8e6b3e' };
+function draw() {
+    const cx = CX(), cy = CY(), W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    const getScr = (gx, gy) => ({ x: gx - player.gX + cx, y: gy - player.gY + cy });
+    const vis = (p, r) => p.x > -r && p.x < W + r && p.y > -r && p.y < H + r;
+    waves.forEach(w => {
+        const sway = Math.sin(gameTime * 0.1 + w.offset) * 20;
+        const dx = (w.x + sway - player.gX % W + W) % W, dy = (w.y - player.gY % H + H) % H;
+        ctx.fillStyle = "rgba(255,255,255,0.15)"; ctx.fillRect(dx, dy, 4, 2);
+    });
+    ports.forEach(port => { const p = getScr(port.x, port.y), k = port.type === 'home' ? 'portHome' : 'portNormal'; if (vis(p, 200)) drawSprite(k, p.x, p.y, port.radius * 2.6, 0, 1, true, FB[k]); });
+    islands.forEach(i => { const p = getScr(i.x, i.y); if (vis(p, 200)) drawSprite('island', p.x, p.y, i.radius * 2.6, 0, 1, true, FB.island); });
+    treasureSites.forEach(t => { if (!t.active) return; const p = getScr(t.x, t.y); if (vis(p, 200)) drawSprite('island', p.x, p.y, t.radius * 2.6, 0, 1, true, FB.island); });
+    rocks.forEach(r => { const p = getScr(r.x, r.y); if (vis(p, 120)) drawSprite('rock', p.x, p.y, r.size * 2, 0, 1, true, FB.rock); });
+    enemies.forEach(e => {
+        if (isNaN(e.x)) return;
+        const p = getScr(e.x, e.y), k = SPR[e.type] || 'shipSmall';
+        drawSprite(k, p.x, p.y, e.size * 3, e.angle, 1, false, FB[k]);
+        if (gameState === STATE.BATTLE) { ctx.fillStyle = "black"; ctx.fillRect(p.x - 20, p.y - 40, 40, 5); ctx.fillStyle = "red"; ctx.fillRect(p.x - 20, p.y - 40, 40 * Math.max(0, e.hp / e.maxHp), 5); }
+    });
+    if (sinkingEnemy) { const s = sinkingEnemy, p = getScr(s.x, s.y), k = SPR[s.type] || 'shipMed'; drawSprite(k, p.x, p.y, s.size * 3 * s.scale, s.angle, s.alpha, false, FB[k]); }
+    wakeParticles.forEach(p => { const pos = getScr(p.x, p.y); ctx.fillStyle = `rgba(255,255,255,${p.life})`; ctx.fillRect(pos.x, pos.y, p.size, p.size); });
+    explosions.forEach(e => { const p = getScr(e.x, e.y); ctx.fillStyle = e.color; ctx.fillRect(p.x, p.y, e.size, e.size); });
+    projectiles.forEach(p => {
+        const pos = getScr(p.x, p.y);
+        ctx.fillStyle = p.hostile ? '#e74c3c' : '#f1c40f'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    });
+    if (gameState !== STATE.MENU) drawSprite('player', cx, cy, 65, player.angle, 1, false, FB.player);
+
+    // Noche
+    const dk = darkness();
+    if (dk > 0 && gameState !== STATE.MENU) { ctx.fillStyle = `rgba(5,10,40,${dk * 0.5})`; ctx.fillRect(0, 0, W, H); }
+
+    // HUD
+    if (gameState !== STATE.MENU && gameState !== STATE.PORT) {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(10, 10, 154, 12);
+        ctx.fillStyle = '#e74c3c'; ctx.fillRect(12, 12, 150 * Math.max(0, player.hp / player.maxHp), 8);
+        ctx.textAlign = 'left'; ctx.font = 'bold 16px sans-serif';
+        ctx.fillStyle = '#f1c40f'; ctx.fillText(`💰 ${player.inventory.gold}`, 10, 45);
+        ctx.fillStyle = player.inventory.rum <= 0 ? '#e74c3c' : '#e67e22'; ctx.fillText(`🍾 ${player.inventory.rum}`, 100, 45);
+        ctx.fillStyle = 'white'; ctx.fillText(`🗺️ ${player.mapCount}`, 10, 70); ctx.fillText(isNight() ? '🌙' : '☀️', 70, 70);
+
+        const ms = 150, m = 10, mid = ms / 2, scale = mid / CFG.radar * 0.93;   // el borde del minimapa coincide con el radar
+        ctx.save(); ctx.translate(W - ms - m, m);
+        ctx.fillStyle = 'rgba(10,30,50,0.7)'; ctx.fillRect(0, 0, ms, ms);
+        if (sprites.minimap.complete && sprites.minimap.naturalWidth > 0) ctx.drawImage(sprites.minimap, 0, 0, ms, ms);
+        const inMap = (dx, dy) => Math.abs(dx) < mid - 5 && Math.abs(dy) < mid - 5;
+        ports.forEach(p => { const dx = (p.x - player.gX) * scale, dy = (p.y - player.gY) * scale; if (inMap(dx, dy)) { ctx.fillStyle = "black"; ctx.font = "italic bold 8px serif"; ctx.textAlign = "center"; ctx.fillText(p.name, mid + dx, mid + dy - 8); ctx.font = "12px Arial"; ctx.fillText("⚓", mid + dx, mid + dy + 5); } });
+        treasureSites.forEach(t => { if (!t.active) return; const dx = (t.x - player.gX) * scale, dy = (t.y - player.gY) * scale; if (inMap(dx, dy)) { ctx.font = "10px Arial"; ctx.fillText("🏝️", mid + dx - 4, mid + dy + 4); ctx.fillStyle = "red"; ctx.font = "bold 8px Arial"; ctx.fillText("X", mid + dx - 2, mid + dy + 2); } });
+        islands.forEach(i => { const dx = (i.x - player.gX) * scale, dy = (i.y - player.gY) * scale; if (inMap(dx, dy)) { ctx.font = "10px Arial"; ctx.fillText("🏝️", mid + dx - 4, mid + dy + 4); } });
+        enemies.forEach(e => {
+            const dx = (e.x - player.gX) * scale, dy = (e.y - player.gY) * scale; if (!inMap(dx, dy)) return;
+            ctx.fillStyle = "#e74c3c"; if (e.type === 'hunter') ctx.fillStyle = "black";
+            if (e.type === 'ghost') ctx.fillStyle = (Math.floor(gameTime * 10) % 2 === 0) ? "#2ecc71" : "transparent";
+            ctx.beginPath(); ctx.arc(mid + dx, mid + dy, 4, 0, Math.PI * 2); ctx.fill();
+        });
+        drawTriangle(ctx, mid, mid, 6, player.angle);
+        ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.strokeStyle = "black"; ctx.lineWidth = 3; ctx.fillStyle = "white";
+        ctx.strokeText("🔍 toca = mapa", mid, ms + 12); ctx.fillText("🔍 toca = mapa", mid, ms + 12);
+        ctx.restore();
+    }
+}
+
+// === CONTROLES (pointer events: se pueden tocar varios botones a la vez) ===
+function resetKeys() { keys.Left = keys.Right = false; }
+function fire(off) {
+    if (gameState !== STATE.BATTLE || player.reloadTimer > 0 || resolving) return;
+    const a = player.angle + off;
+    projectiles.push({ x: player.gX, y: player.gY, vx: Math.sin(a) * 7, vy: -Math.cos(a) * 7, life: 50, hostile: false });
+    player.reloadTimer = 60; sfx('cannon');
+}
+(function setupControls() {
+    const hold = (id, k) => {
+        const el = $(id);
+        el.addEventListener('pointerdown', e => { e.preventDefault(); keys[k] = true; try { el.setPointerCapture(e.pointerId); } catch (_) {} });
+        ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => el.addEventListener(ev, () => { keys[k] = false; }));
+    };
+    const tap = (el, fn) => el.addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
+    hold('btn-left', 'Left'); hold('btn-right', 'Right');
+    tap(ui.anchorBtn, () => { player.isSailing = !player.isSailing; ui.anchorBtn.classList.toggle('sailing'); showMsg(player.isSailing ? "¡LEVAR ANCLAS!" : "¡LANZAR EL ANCLA!"); });
+    tap(ui.btnShootL, () => fire(-1.57));
+    tap(ui.btnShootR, () => fire(1.57));
+    tap(ui.btnShootF, () => { if (player.upgrades.frontCannon) fire(0); });
+    tap(ui.btnShootB, () => { if (player.upgrades.rearCannon) fire(Math.PI); });
+    window.addEventListener('blur', resetKeys);
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    // Primer toque: desbloquea audio y arranca la música del menú
+    document.addEventListener('pointerdown', () => { initAudio(); if (gameState === STATE.MENU) playMusic('menu'); }, { once: true });
+})();
+
+// Pausar audio al salir de la app y reanudarlo al volver
+let wasPlaying = { a: false, m: false };
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        resetKeys(); wasPlaying = { a: !audio.ambient.paused, m: !!currentMusic && !currentMusic.paused };
+        audio.ambient.pause(); if (currentMusic) currentMusic.pause(); if (AC && AC.suspend) AC.suspend();
+    } else {
+        if (wasPlaying.a && settings.ambient) audio.ambient.play().catch(() => {});
+        if (wasPlaying.m && currentMusic && settings.music) currentMusic.play().catch(() => {});
+        if (AC && AC.resume) AC.resume();
+    }
+});
+
+// === BUCLE: 60 actualizaciones por segundo en cualquier pantalla ===
+let lastT = 0, acc = 0;
+function loop(t) {
+    acc += Math.min(t - lastT, 100); lastT = t;
+    while (acc >= STEP) { update(); acc -= STEP; }
+    draw(); requestAnimationFrame(loop);
+}
+requestAnimationFrame(t => { lastT = t; loop(t); });
+</script>
 </body>
 </html>
