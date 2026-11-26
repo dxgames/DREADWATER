@@ -226,11 +226,12 @@ const SPR = { normal: 'shipSmall', med: 'shipMed', big: 'shipBig', ghost: 'ghost
         ghost: "images/sprites/barco-fantasma.png",
         rock: "images/sprites/isla-de-rocas.png",
         island: "images/sprites/isla.png",
-        portHome: "images/sprites/puerto-desesperanza.gif",
-        portSmall: "images/sprites/puerto-pequeno.gif",
-        portMed: "images/sprites/puerto-mediano.gif",
-        portBig: "images/sprites/puerto-grande.gif",
-        minimap: "images/UI/Minimapa.png"
+        portHome: "images/sprites/puerto-desesperanza-sheet.png",
+        portSmall: "images/sprites/puerto-pequeno-sheet.png",
+        portMed: "images/sprites/puerto-mediano-sheet.png",
+        portBig: "images/sprites/puerto-grande-sheet.png",
+        minimap: "images/UI/Minimapa.png",
+        gull: "images/sprites/gaviota-volando-sheet.png"
     };
     for (const k in imgs) { const im = new Image(); im.onerror = () => { im._err = 1; }; im.src = imgs[k]; sprites[k] = im; }
     const tracks = {
@@ -342,8 +343,16 @@ const ports = [
     ["Isla del Olvido", 50000, 50000, 'small'], ["Cabo Fin del Mundo", -60000, -60000, 'small']
 ].map(([name, x, y, type = 'med']) => ({ name, x, y, radius: { home: 110, small: 90, med: 110, big: 140 }[type] || 110, type }));
 const PORT_SPR = { home: 'portHome', small: 'portSmall', med: 'portMed', big: 'portBig' };
+// Animacion por cuadros: el canvas no anima los GIF por si solo, asi que los
+// sprites animados son tiras de 8 cuadros y el juego dibuja el cuadro que toca.
+// gameTime avanza 3.0 por segundo: 0.36 = ~120 ms por cuadro (puertos), 0.3 = ~100 ms (gaviota).
+const ANIM_FRAMES = { portHome: 8, portSmall: 8, portMed: 8, portBig: 8, gull: 8 };
+const ANIM_STEP = { portHome: 0.36, portSmall: 0.36, portMed: 0.36, portBig: 0.36, gull: 0.3 };
 
 let enemies = [], rocks = [], islands = [], projectiles = [], wakeParticles = [], explosions = [];
+let seagulls = [];
+function spawnGull(g) { const a = Math.random() * Math.PI * 2, d = 400 + Math.random() * 1200; g.x = player.gX + Math.sin(a) * d; g.y = player.gY + Math.cos(a) * d; g.angle = Math.random() * Math.PI * 2; g.speed = 1.2 + Math.random() * 1.1; g.size = 26 + Math.random() * 12; }
+for (let i = 0; i < 7; i++) { const g = {}; spawnGull(g); seagulls.push(g); }
 let battleEnemy = null, sinkingEnemy = null, treasureSites = [], currentPort = null;
 const waves = [];
 for (let i = 0; i < 60; i++) waves.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, offset: Math.random() * 100 });
@@ -732,6 +741,7 @@ function update() {
     if (gameState !== STATE.MENU) dayClock++;
     gameTime += 0.05;
     updateProceduralSpawns();
+    seagulls.forEach(g => { g.angle += (Math.random() - 0.5) * 0.05; g.x += Math.sin(g.angle) * g.speed; g.y -= Math.cos(g.angle) * g.speed; if (dist(g.x, g.y, player.gX, player.gY) > 2600) spawnGull(g); });
     if (player.reloadTimer > 0) player.reloadTimer--;
 
     if (gameState === STATE.ROAMING) {
@@ -839,7 +849,11 @@ function drawSprite(key, x, y, size, angle, alpha = 1, isStatic = false, fb = '#
     const ok = img.complete && img.naturalWidth > 0;
     if (!ok && !img._err) return;                       // aún cargando
     ctx.save(); ctx.translate(x, y); ctx.rotate(angle + (isStatic ? 0 : Math.PI)); ctx.globalAlpha = alpha;
-    if (ok) ctx.drawImage(img, -size / 2, -size / 2, size, size);
+    if (ok) {
+        const nf = ANIM_FRAMES[key];
+        if (nf) { const fw = img.naturalWidth / nf, f = Math.floor(gameTime / ANIM_STEP[key]) % nf; ctx.drawImage(img, f * fw, 0, fw, img.naturalHeight, -size / 2, -size / 2, size, size); }
+        else ctx.drawImage(img, -size / 2, -size / 2, size, size);
+    }
     else {                                              // respaldo si la imagen no carga
         ctx.fillStyle = fb; ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.beginPath();
         if (isStatic) ctx.arc(0, 0, size / 2.6, 0, 7); else ctx.ellipse(0, 0, size / 4, size / 2.4, 0, 0, 7);
@@ -847,7 +861,7 @@ function drawSprite(key, x, y, size, angle, alpha = 1, isStatic = false, fb = '#
     }
     ctx.restore();
 }
-const FB = { shipSmall: '#ecf0f1', shipMed: '#ecf0f1', shipBig: '#ecf0f1', ghost: '#2ecc71', hunter: '#2c3e50', player: '#f1c40f', rock: '#7f8c8d', island: '#27ae60', portHome: '#d4ac0d', portSmall: '#a67c52', portMed: '#8e6b3e', portBig: '#7d6608' };
+const FB = { shipSmall: '#ecf0f1', shipMed: '#ecf0f1', shipBig: '#ecf0f1', ghost: '#2ecc71', hunter: '#2c3e50', player: '#f1c40f', rock: '#7f8c8d', island: '#27ae60', portHome: '#d4ac0d', portSmall: '#a67c52', portMed: '#8e6b3e', portBig: '#7d6608', gull: '#ecf0f1' };
 function draw() {
     const cx = CX(), cy = CY(), W = canvas.width, H = canvas.height;
     ctx.clearRect(0, 0, W, H);
@@ -919,6 +933,8 @@ function draw() {
         ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.strokeStyle = "black"; ctx.lineWidth = 3; ctx.fillStyle = "white";
         ctx.strokeText("⏸ toca = pausa", W - ms - m + mid, m + ms + 12); ctx.fillText("⏸ toca = pausa", W - ms - m + mid, m + ms + 12);
     }
+    // Gaviotas: vuelan por arriba de todo
+    seagulls.forEach(g => { const p = getScr(g.x, g.y); if (vis(p, 80)) drawSprite('gull', p.x, p.y, g.size, g.angle, 1, true, FB.gull); });
 }
 
 // === CONTROLES (pointer events: se pueden tocar varios botones a la vez) ===
