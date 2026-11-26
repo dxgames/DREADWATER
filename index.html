@@ -146,7 +146,8 @@ document.getElementById('ver').textContent = VERSION;
 const CFG = {
     radar: 3500,                 // alcance del radar (unidades del mundo)
     cooldown: 300000,            // enfriamiento de Fantasma y Cazador: 5 min (ms)
-    dayLen: 28800,               // duración de un día completo en frames (8 min a 60 fps)
+    dayFrames: 9423,             // duración del día en frames = duración de dia.m4a (157.1 s)
+    nightFrames: 10687,          // duración de la noche en frames = duración de noche.mp3 (178.1 s)
     ghostP: 0.00002,             // prob. por frame de que aparezca el Fantasma (solo de noche)
     hunterGold: 6000,            // oro mínimo para que el Cazador pueda aparecer
     hunterBaseP: 0.000005,       // prob. por frame del Cazador al llegar a ese oro
@@ -226,15 +227,18 @@ const SPR = { normal: 'shipSmall', med: 'shipMed', big: 'shipBig', ghost: 'ghost
     };
     for (const k in imgs) { const im = new Image(); im.onerror = () => { im._err = 1; }; im.src = imgs[k]; sprites[k] = im; }
     const tracks = {
-        ambient: "https://archive.org/download/sonido-del-mar_202512/Sonido%20del%20Mar.mp3",
-        menu: "https://archive.org/download/the-galeon-of-souls/Menuprincipal.mp3",
-        hunter: "https://archive.org/download/the-galeon-of-souls/Perseguidor.mp3",
-        ghost: "https://archive.org/download/the-galeon-of-souls/The%20Galeon%20of%20Souls.mp3",
-        battleBig: "https://archive.org/download/the-galeon-of-souls/batalla%20grande.mp3",
-        battleSmall: "https://archive.org/download/the-galeon-of-souls/Batalla%20peque%C3%B1a.mp3"
+        ambient: "audio/music/mar.mp3",
+        menu: "audio/music/menu.mp3",
+        hunter: "audio/music/perseguidor.mp3",
+        ghost: "audio/music/fantasma.mp3",
+        battleBig: "audio/music/batallagrande.mp3",
+        battleMed: "audio/music/batallamedia.mp3",
+        battleSmall: "audio/music/batallafacil.mp3",
+        dia: "audio/music/dia.m4a",
+        noche: "audio/music/noche.mp3"
     };
     for (const k in tracks) {
-        const a = new Audio(); a.preload = (k === 'menu' || k === 'ambient') ? 'auto' : 'none';
+        const a = new Audio(); a.preload = (k === 'menu' || k === 'ambient' || k === 'dia' || k === 'noche') ? 'auto' : 'none';
         a.src = tracks[k]; a.loop = true; audio[k] = a;
     }
 })();
@@ -245,9 +249,18 @@ function playMusic(name) {
     if (name && audio[name]) { currentMusic = audio[name]; currentMusic.play().catch(() => {}); } else currentMusic = null;
 }
 function stopMusic() { if (currentMusic) { currentMusic.pause(); currentMusic.currentTime = 0; currentMusic = null; } }
+// Música de día/noche: dia.m4a de día, noche.mp3 de noche. Solo cambia cuando
+// cambia el momento del día, así no reinicia la canción a cada rato.
+function playDayNightMusic() {
+    const name = isNight() ? 'noche' : 'dia';
+    if (!settings.music) return;
+    if (currentMusic === audio[name]) return;
+    if (currentMusic) { currentMusic.pause(); currentMusic.currentTime = 0; }
+    if (audio[name]) { audio[name].currentTime = 0; currentMusic = audio[name]; currentMusic.play().catch(() => {}); }
+}
 function updateAudioSettings() {
     if (settings.ambient) audio.ambient.play().catch(() => {}); else audio.ambient.pause();
-    if (!settings.music) stopMusic(); else if (gameState === STATE.MENU) playMusic('menu');
+    if (!settings.music) stopMusic(); else if (gameState === STATE.MENU) playMusic('menu'); else if (gameState === STATE.ROAMING) playDayNightMusic();
 }
 
 // --- Efectos de sonido (generados con WebAudio, sin archivos) ---
@@ -271,11 +284,25 @@ function noise(d, vol, cutoff) {
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
     s.connect(f); f.connect(g); g.connect(AC.destination); s.start(t);
 }
+// --- Efectos 8 bits (archivos MP3 en audio/sounds/) ---
+// Si un archivo falta, sfx() usa el sonido sintetizado de antes como respaldo.
+const sfxFiles = {
+    cannon: new Audio('audio/sounds/canon-disparo-8bit.mp3'),
+    hit: new Audio('audio/sounds/barco-impacto-8bit.mp3'),
+    ghost: new Audio('audio/sounds/barco-fantasma-8bit.mp3')
+};
+function playSfxFile(name) {
+    const a = sfxFiles[name];
+    if (!a) return false;
+    try { a.currentTime = 0; const pr = a.play(); if (pr) pr.catch(() => {}); return true; }
+    catch (e) { return false; }
+}
 function sfx(name) {
     if (!settings.sound || !AC) return;
     try {
-        if (name === 'cannon') { noise(0.25, 0.5, 700); tone(130, 0.2, 'sine', 0.5, 40); }
-        else if (name === 'hit') noise(0.15, 0.4, 1400);
+        if (name === 'cannon') { if (playSfxFile('cannon')) return; noise(0.25, 0.5, 700); tone(130, 0.2, 'sine', 0.5, 40); }
+        else if (name === 'hit') { if (playSfxFile('hit')) return; noise(0.15, 0.4, 1400); }
+        else if (name === 'ghost') { if (playSfxFile('ghost')) return; tone(110, 1.2, 'sawtooth', 0.2, 55); }
         else if (name === 'bump') tone(90, 0.12, 'triangle', 0.4, 50);
         else if (name === 'coin') { tone(880, 0.1, 'square', 0.12); setTimeout(() => { try { tone(1320, 0.15, 'square', 0.12); } catch (e) {} }, 90); }
         else if (name === 'sink') { tone(220, 0.9, 'sawtooth', 0.2, 40); noise(0.6, 0.3, 500); }
@@ -325,7 +352,23 @@ const fireBtns = [ui.btnShootL, ui.btnShootR, ui.btnShootF, ui.btnShootB];
 ui.actionBtn.onclick = () => { if (currentAction) currentAction(); };
 
 // === DÍA / NOCHE ===
-function darkness() { const s = Math.cos(dayClock / CFG.dayLen * Math.PI * 2); return Math.max(0, Math.min(1, 0.2 - s)); }
+// El día dura lo que dura dia.m4a y la noche lo que dura noche.mp3.
+// Amanecer y atardecer son transiciones suaves de 20 s.
+function darkness() {
+    const total = CFG.dayFrames + CFG.nightFrames;
+    const p = ((dayClock % total) + total) % total;
+    const TW = Math.min(1200, CFG.dayFrames / 4, CFG.nightFrames / 4);
+    const half = TW / 2;
+    if (p >= CFG.dayFrames - half && p < CFG.dayFrames + half) {
+        const u = (p - (CFG.dayFrames - half)) / TW;
+        return 0.5 - 0.5 * Math.cos(Math.PI * u);
+    }
+    if (p >= total - half || p < half) {
+        const u = ((p + half) % total) / TW;
+        return 0.5 + 0.5 * Math.cos(Math.PI * u);
+    }
+    return p < CFG.dayFrames ? 0 : 1;
+}
 const isNight = () => darkness() > 0.6;
 
 // === GUARDADO ===
@@ -355,7 +398,7 @@ function loadGame() {
 // === MENÚS ===
 function startGame() {
     hideAllMenus(); initAudio(); loadGame(); ui.controls.style.display = 'flex'; gameState = STATE.ROAMING;
-    updateAudioSettings(); playMusic(null); showMsg("¡DREADWATER TE ESPERA!", "#f1c40f"); showHints();
+    updateAudioSettings(); showMsg("¡DREADWATER TE ESPERA!", "#f1c40f"); showHints();
 }
 function showHints() {
     let seen = null;
@@ -468,7 +511,7 @@ function updateProceduralSpawns() {
     if (isNight() && ghostCD <= 0 && !hasType('ghost') && Math.random() < CFG.ghostP) {
         const a = ang();
         enemies.push({ x: player.gX + Math.cos(a) * 2200, y: player.gY + Math.sin(a) * 2200, angle: ang(), hp: 1000, maxHp: 1000, size: 35, type: 'ghost', reload: 60, canFlee: false, noEscape: true, speed: 2.2 });
-        showMsg("¡SENTIRÁS EL FRÍO!", "#2ecc71");
+        showMsg("¡SENTIRÁS EL FRÍO!", "#2ecc71"); sfx('ghost');
     }
     // Barcos normales
     if (enemies.length < 8) {
@@ -506,7 +549,8 @@ function startBattle(e) {
     ui.btnShootF.style.visibility = player.upgrades.frontCannon ? 'visible' : 'hidden';
     ui.btnShootB.style.visibility = player.upgrades.rearCannon ? 'visible' : 'hidden';
     let track = 'battleSmall';
-    if (e.type === 'big' || e.type === 'med') track = 'battleBig';
+    if (e.type === 'med') track = 'battleMed';
+    else if (e.type === 'big') track = 'battleBig';
     if (e.type === 'hunter') track = 'hunter';
     if (e.type === 'ghost') track = 'ghost';
     playMusic(track);
@@ -563,7 +607,7 @@ function endBattle(win, escaped, whoEscaped, gold = 0, rum = 0, maps = 0, winMsg
         else { player.gX = player.savedPos.x; player.gY = player.savedPos.y; player.speed = 0; player.isSailing = false; ui.anchorBtn.classList.remove('sailing'); }
         enemies = []; rocks = []; islands = []; projectiles = []; sinkingEnemy = null; battleEnemy = null; resolving = false;
         keys.Left = keys.Right = false;
-        gameState = STATE.ROAMING; ui.resultScreen.classList.remove('visible'); ui.controls.style.display = 'flex';
+        gameState = STATE.ROAMING; ui.resultScreen.classList.remove('visible'); ui.controls.style.display = 'flex'; playDayNightMusic();
     };
 }
 
@@ -649,7 +693,7 @@ function update() {
 
     if (gameState === STATE.ROAMING) {
         const n = isNight();
-        if (n !== wasNight) { wasNight = n; showMsg(n ? "🌙 CAE LA NOCHE" : "☀️ AMANECE", n ? "#9b9bff" : "#f1c40f"); }
+        if (n !== wasNight) { wasNight = n; showMsg(n ? "🌙 CAE LA NOCHE" : "☀️ AMANECE", n ? "#9b9bff" : "#f1c40f"); playDayNightMusic(); }
         if (player.isSailing && ++player.rumConsumptionTimer > 1800) { if (player.inventory.rum > 0) player.inventory.rum--; player.rumConsumptionTimer = 0; }
     }
 
