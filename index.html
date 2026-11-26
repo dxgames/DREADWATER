@@ -69,6 +69,7 @@ h2{color:#f1c40f;text-align:center;margin:0 0 15px;text-shadow:2px 2px 0 #000;te
 
 <div id="dialog-modal">
     <div id="dialog-text" style="margin-bottom:20px;font-style:italic"></div>
+    <button class="btn-ui" id="btn-dialog-accept" style="padding:5px 20px;font-size:14px;display:none" onclick="acceptRumor()">✔ Aceptar</button>
     <button class="btn-ui" style="padding:5px 20px;font-size:14px" onclick="closeDialog()">Cerrar</button>
 </div>
 
@@ -209,7 +210,57 @@ const POOR_QUOTES = [
     "No nos mires así, no elegimos nacer en el fango.",
     "La marea sube, pero nuestra suerte solo baja.",
     "¿Tienes un poco de ron para olvidar este agujero?",
-    "Moriremos aquí, viendo barcos pasar a lo lejos."
+    "Moriremos aquí, viendo barcos pasar a lo lejos.",
+    "El mar nos dio la espalda y la tierra también.",
+    "Ayer comimos algas. Hoy, algas con suerte.",
+    "Mi barco se hundió y con él, mi última esperanza.",
+    "Dicen que la miseria es temporal. Llevamos tres generaciones aquí.",
+    "Si el mar nos quisiera, nos habría tragado ya.",
+    "El único tesoro de Desesperanza es que aún respiramos.",
+    "Vendí mi anillo de bodas por un pescado. El pescado estaba podrido.",
+    "Aquí hasta los peces se van a otros puertos.",
+    "Mi abuelo murió esperando un barco con medicinas. Nunca llegó.",
+    "Somos tan pobres que El Cazador ni nos mira.",
+    "La última vez que vimos oro fue en un sueño. Y era falso.",
+    "Si tienes ron, compártelo. Es lo único que nos queda."
+];
+
+// Consejos que te dan al hablar en algunos puertos (40% de las veces)
+const PORT_ADVICE = [
+    "A veces por las noches se ve un extraño barco verde surcando el mar sin hacer ruido.",
+    "Dicen que El Cazador huele el oro: si llevas mucho encima, te encontrará.",
+    "Los barcos pequeños huyen de ti si te ven fuerte, pero te buscan si te ven herido.",
+    "Repara tu casco antes de zarpar: una batalla con el casco roto es una tumba.",
+    "El ron se gasta mientras navegas. Si te quedas sin ron, irás a medio gas.",
+    "Las islas del tesoro no desaparecen al excavarlas: quedan como islas normales.",
+    "Si ves un naufragio, acércate a inspeccionarlo... pero con cuidado, a veces es una trampa.",
+    "En los puertos se escuchan rumores. Cuestan 100 de oro, pero algunos valen la pena.",
+    "El Fantasma solo aparece de noche. De día, el mar es tuyo.",
+    "Los barcos grandes nunca huyen. Si te topas con uno, pelea o muere.",
+    "Marca tu destino en el mapa y sigue la flecha dorada. El mar es muy grande para ir a ciegas.",
+    "Si navegas en círculos tres veces seguidas, aparece el Kraken.",
+    "Dicen que bajo el Abismo Negro duerme un tesoro que nadie ha podido sacar.",
+    "Nunca confíes en un barco que no se mueve: puede ser un naufragio... o una trampa.",
+    "Donde hay gaviotas, hay tierra cerca. Si las ves, busca puerto o isla.",
+    "Los barcos medianos te cazarán si te ven con muy poca vida. No les des el gusto."
+];
+// Rumores de taberna: algunos reales, algunos falsos. Los que tienen
+// ubicacion se marcan con una X en el minimapa al aceptarlos.
+const RUMORS = [
+    { text: "Se ha visto un naufragio cerca de Port Royal. Dicen que el barco iba cargado de oro...", loc: 'wreck', near: 'Port Royal' },
+    { text: "Un barco se hundió junto a Isla Tortuga. Nadie se atreve a acercarse...", loc: 'wreck', near: 'Isla Tortuga' },
+    { text: "Hay un naufragio a la deriva cerca de Puerto del Botín, con la bodega intacta.", loc: 'wreck', near: 'Puerto del Botín' },
+    { text: "Dicen que un galeón se partió en dos cerca de Bahía de la Tormenta.", loc: 'wreck', near: 'Bahía de la Tormenta' },
+    { text: "Juran que hay un tesoro enterrado cerca de Cala del Loro, bajo una palmera torcida.", loc: 'fake', near: 'Cala del Loro' },
+    { text: "Un viejo marinero vio un cofre flotando cerca de Cabo Fin del Mundo.", loc: 'fake', near: 'Cabo Fin del Mundo' },
+    { text: "A veces por las noches se ve un extraño barco verde surcando el mar sin hacer ruido.", loc: null },
+    { text: "Dicen que El Cazador huele el oro: si llevas mucho encima, te encontrará.", loc: null },
+    { text: "Si navegas en círculos tres veces seguidas, aparece el Kraken.", loc: null },
+    { text: "El ron se acaba más rápido si navegas de noche. Mejor duerme en puerto.", loc: null },
+    { text: "Los barcos pequeños huyen de ti si te ven fuerte, pero te cazan si te ven herido.", loc: null },
+    { text: "Dicen que bajo el Abismo Negro duerme un tesoro que nadie ha podido sacar.", loc: null },
+    { text: "Nunca confíes en un barco que no se mueve: puede ser un naufragio... o una trampa.", loc: null },
+    { text: "Se dice que el Fantasma solo aparece de noche. De día, el mar es tuyo.", loc: null }
 ];
 
 // === ASSETS & AUDIO ===
@@ -232,7 +283,8 @@ const SPR = { normal: 'shipSmall', med: 'shipMed', big: 'shipBig', ghost: 'ghost
         portMed: "images/sprites/puerto-mediano-sheet.png",
         portBig: "images/sprites/puerto-grande-sheet.png",
         minimap: "images/UI/Minimapa.png",
-        gull: "images/sprites/gaviota-volando-sheet.png"
+        gull: "images/sprites/gaviota-volando-sheet.png",
+        wreck: "images/sprites/barco-naufragio.png"
     };
     for (const k in imgs) { const im = new Image(); im.onerror = () => { im._err = 1; }; im.src = imgs[k]; sprites[k] = im; }
     const tracks = {
@@ -350,9 +402,10 @@ const PORT_SPR = { home: 'portHome', small: 'portSmall', med: 'portMed', big: 'p
 const ANIM_FRAMES = { portHome: 8, portSmall: 8, portMed: 8, portBig: 8, gull: 8 };
 const ANIM_STEP = { portHome: 0.36, portSmall: 0.36, portMed: 0.36, portBig: 0.36, gull: 0.3 };
 
-let enemies = [], rocks = [], islands = [], projectiles = [], wakeParticles = [], explosions = [];
+let enemies = [], rocks = [], islands = [], projectiles = [], wakeParticles = [], explosions = [], wrecks = [];
 let skirmishCD = 6000; // frames hasta buscar la proxima batalla entre barcos
 let destination = null; // destino marcado en el mapa {x, y} o null
+let pendingRumor = null, rumorMark = null; // rumor en pantalla y su marca X {x, y, fake}
 let seagulls = [];
 // IA de gaviotas: cada una cambia sola de estado con temporizador.
 // wander = a su antojo | flock = en parvada | follow = sigue el barco |
@@ -400,7 +453,7 @@ const isNight = () => darkness() > 0.6;
 // === GUARDADO ===
 function saveGame(silent) {
     const d = { gold: player.inventory.gold, rum: player.inventory.rum, spawnX: player.savedPos.x, spawnY: player.savedPos.y,
-        port: player.spawnPort, upgrades: player.upgrades, maps: player.mapCount, treasures: treasureSites };
+        port: player.spawnPort, upgrades: player.upgrades, maps: player.mapCount, treasures: treasureSites, wrecks: wrecks, rumor: rumorMark };
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(d)); } catch (e) {}
     if (!silent) showMsg("¡CHECKPOINT GUARDADO!", "#2ecc71");
 }
@@ -418,6 +471,8 @@ function loadGame() {
     player.upgrades.frontCannon = !!u.frontCannon; player.upgrades.rearCannon = !!u.rearCannon;
     player.mapCount = Math.max(0, n(d.maps, 0));
     treasureSites = Array.isArray(d.treasures) ? d.treasures : [];
+    wrecks = Array.isArray(d.wrecks) ? d.wrecks : [];
+    rumorMark = d.rumor && Number.isFinite(d.rumor.x) && Number.isFinite(d.rumor.y) ? d.rumor : null;
     return true;
 }
 
@@ -446,7 +501,7 @@ function toggleSetting(k) {
     if (k === 'sound') sfx('coin');
 }
 function vibrate(ms) { if (settings.vibrate && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) {} } }
-function closeDialog() { $('dialog-modal').style.display = 'none'; }
+function closeDialog() { $('dialog-modal').style.display = 'none'; $('btn-dialog-accept').style.display = 'none'; pendingRumor = null; }
 
 // === PANTALLA COMPLETA Y HORIZONTAL ===
 function goLandscape() {
@@ -550,6 +605,8 @@ function drawFullMap() {
         mapCtx.textAlign = "center"; mapCtx.font = `${16 / z}px Arial`; mapCtx.fillText("🏝️", mx, my + 5 / z);
         if (t.active) { mapCtx.fillStyle = "red"; mapCtx.font = `bold ${14 / z}px Arial`; mapCtx.fillText("X", mx, my + 5 / z); }
     });
+    wrecks.forEach(w => { const mx = cx + w.x * scale, my = cy + w.y * scale; mapCtx.textAlign = "center"; mapCtx.font = `${14 / z}px Arial`; mapCtx.fillText(w.state === 'uninspected' ? "💀" : "⚓", mx, my + 5 / z); });
+    if (rumorMark) { const mx = cx + rumorMark.x * scale, my = cy + rumorMark.y * scale; mapCtx.fillStyle = "red"; mapCtx.font = `bold ${16 / z}px Arial`; mapCtx.textAlign = "center"; mapCtx.fillText("X", mx, my + 5 / z); }
     if (destination) {
         const mx = cx + destination.x * scale, my = cy + destination.y * scale;
         mapCtx.strokeStyle = "#f1c40f"; mapCtx.lineWidth = 2 / z;
@@ -652,6 +709,14 @@ function updateProceduralSpawns() {
     enemies = enemies.filter(e => e.type === 'ghost' || dist(player.gX, player.gY, e.x, e.y) < (e.type === 'hunter' ? CFG.radar : 5000));
     rocks = rocks.filter(r => dist(player.gX, player.gY, r.x, r.y) < 4000);
     islands = islands.filter(i => dist(player.gX, player.gY, i.x, i.y) < 7000);
+    if (wrecks.length < 3 && Math.random() < 0.002) {
+        const anchors = islands.concat(treasureSites);
+        if (anchors.length > 0) { const a0 = anchors[Math.floor(Math.random() * anchors.length)], a = ang();
+            wrecks.push({ x: a0.x + Math.cos(a) * (a0.radius + 40), y: a0.y + Math.sin(a) * (a0.radius + 40), angle: Math.random() * Math.PI * 2, state: 'uninspected' }); }
+    }
+    if (wrecks.length < 3 && rocks.length > 0 && Math.random() < 0.001) { const r = rocks[Math.floor(Math.random() * rocks.length)], a = ang();
+        wrecks.push({ x: r.x + Math.cos(a) * 100, y: r.y + Math.sin(a) * 100, angle: Math.random() * Math.PI * 2, state: 'uninspected' }); }
+    wrecks = wrecks.filter(w => w.rumor || dist(player.gX, player.gY, w.x, w.y) < 7000);
     treasureSites = treasureSites.filter(t => dist(player.gX, player.gY, t.x, t.y) < 7000); // excavadas se quedan como islas, igual que las demas
 }
 
@@ -741,6 +806,7 @@ function renderPortMenu(screen, msg, col) {
     let h = stats;
     if (screen === 'main') {
         h += say("") + `<div class="port-option" onclick="talkDialog()"><span>🗣️ Hablar</span></div>
+            <div class="port-option" onclick="rumorDialog()"><span>👂 Escuchar rumores</span><span>100G</span></div>
             <div class="port-option" onclick="renderPortMenu('tavern')"><span>🍺 Taberna</span></div>
             <div class="port-option" onclick="renderPortMenu('shipyard')"><span>🛠️ Astillero</span></div>
             <div class="port-option" onclick="restInPort()"><span>🛌 Descansar (guardar)</span></div>
@@ -784,8 +850,58 @@ function restInPort() {
     renderPortMenu('main', '✔ Checkpoint guardado aquí', '#2ecc71');
 }
 function talkDialog() {
-    const pool = (currentPort && currentPort.name === 'Desesperanza') ? POOR_QUOTES : PORT_QUOTES;
-    $('dialog-text').innerText = `"${pool[Math.floor(Math.random() * pool.length)]}"`; $('dialog-modal').style.display = 'block';
+    let pool = (currentPort && currentPort.name === 'Desesperanza') ? POOR_QUOTES : PORT_QUOTES;
+    if (currentPort && currentPort.name !== 'Desesperanza' && Math.random() < 0.4) pool = PORT_ADVICE;
+    $('dialog-text').innerText = `"${pool[Math.floor(Math.random() * pool.length)]}"`;
+    $('btn-dialog-accept').style.display = 'none'; $('dialog-modal').style.display = 'block';
+}
+// Rumores: 100 de oro por escuchar uno; al aceptarlo se marca su ubicacion
+function rumorDialog() {
+    if (player.inventory.gold < 100) return renderPortMenu('main', 'Oro insuficiente (100G)', '#e74c3c');
+    player.inventory.gold -= 100; sfx('coin');
+    pendingRumor = RUMORS[Math.floor(Math.random() * RUMORS.length)];
+    $('dialog-text').innerText = `"${pendingRumor.text}"`;
+    $('btn-dialog-accept').style.display = 'inline-block'; $('dialog-modal').style.display = 'block';
+    renderPortMenu('main');
+}
+function acceptRumor() {
+    const r = pendingRumor; pendingRumor = null;
+    $('btn-dialog-accept').style.display = 'none'; closeDialog();
+    if (!r || !r.loc) return;
+    const p = ports.find(q => q.name === r.near);
+    if (!p) return;
+    const a = Math.random() * Math.PI * 2, d = 1200 + Math.random() * 800;
+    const x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d;
+    if (r.loc === 'wreck') {
+        wrecks.push({ x, y, angle: Math.random() * Math.PI * 2, state: 'uninspected', rumor: true });
+        rumorMark = { x, y, fake: false };
+        showMsg("📍 Naufragio marcado en el minimapa", "#f1c40f");
+    } else {
+        rumorMark = { x, y, fake: true };
+        showMsg("📍 Lugar marcado en el minimapa", "#f1c40f");
+    }
+}
+// Inspeccionar un naufragio: nada (40%), botin (40%) o trampa -> batalla (20%)
+function inspectWreck(w) {
+    if (w.state !== 'uninspected') return;
+    if (rumorMark && dist(rumorMark.x, rumorMark.y, w.x, w.y) < 500) rumorMark = null;
+    const roll = Math.random();
+    if (roll < 0.2) {
+        w.state = 'looted'; w.rumor = false;
+        const type = Math.random() < 0.6 ? 'normal' : 'med';
+        const hp = type === 'med' ? 100 : 50, size = type === 'med' ? 25 : 20, spd = type === 'med' ? 1.2 : 0.8;
+        showMsg("¡ERA UNA TRAMPA! ¡Piratas emboscados!", "#e74c3c"); sfx('cannon');
+        startBattle({ x: w.x, y: w.y, angle: 0, hp, maxHp: hp, size, type, reload: 60, canFlee: true, speed: spd });
+    } else if (roll < 0.6) {
+        w.state = 'looted'; w.rumor = false;
+        const g = Math.floor(Math.random() * 401) + 100, rum = Math.floor(Math.random() * 11) + 5;
+        player.inventory.gold += g; player.inventory.rum += rum;
+        if (Math.random() < 0.15) { player.mapCount++; showMsg("¡MAPA ENCONTRADO!", "#9b59b6"); }
+        showMsg(`+${g} ORO / +${rum} RON`, "#f1c40f"); sfx('coin');
+    } else {
+        w.state = 'empty'; w.rumor = false;
+        showMsg("Solo madera podrida... no hay nada útil.", "#bdc3c7");
+    }
 }
 function enterPort(port) {
     currentPort = port; gameState = STATE.PORT; player.speed = 0; player.isSailing = false; ui.anchorBtn.classList.remove('sailing');
@@ -880,9 +996,13 @@ function update() {
             pushOut(t.x, t.y, t.radius - 20, t.radius - 15, -0.5);
             if (t.active && dist(player.gX, player.gY, t.x, t.y) < 300) { ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "💎 EXCAVAR"; currentAction = () => dig(t); inRange = true; }
         });
+        wrecks.forEach(w => {
+            if (w.state === 'uninspected' && dist(player.gX, player.gY, w.x, w.y) < 300) { ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "🔍 INSPECCIONAR"; currentAction = () => inspectWreck(w); inRange = true; }
+        });
         if (!inRange) ui.actionBtn.style.display = 'none';
         islands.forEach(i => pushOut(i.x, i.y, i.radius - 20, i.radius - 15, -0.5));
         if (destination && dist(player.gX, player.gY, destination.x, destination.y) < 150) { destination = null; updateDestBtn(); showMsg("📍 ¡Destino alcanzado!", "#2ecc71"); sfx('coin'); }
+        if (rumorMark && dist(player.gX, player.gY, rumorMark.x, rumorMark.y) < 300 && !wrecks.some(w => w.state === 'uninspected' && dist(player.gX, player.gY, w.x, w.y) < 500)) { rumorMark = null; showMsg("No hay nada aquí... el rumor era falso.", "#e74c3c"); }
         rocks.forEach(r => {
             if (!pushOut(r.x, r.y, r.size - 15, r.size, -0.8)) return;
             player.hp -= 1; vibrate(100); sfx('bump');
@@ -1021,7 +1141,7 @@ function drawSprite(key, x, y, size, angle, alpha = 1, isStatic = false, fb = '#
     }
     ctx.restore();
 }
-const FB = { shipSmall: '#ecf0f1', shipMed: '#ecf0f1', shipBig: '#ecf0f1', ghost: '#2ecc71', hunter: '#2c3e50', player: '#f1c40f', rock: '#7f8c8d', island: '#27ae60', portHome: '#d4ac0d', portSmall: '#a67c52', portMed: '#8e6b3e', portBig: '#7d6608', gull: '#ecf0f1' };
+const FB = { shipSmall: '#ecf0f1', shipMed: '#ecf0f1', shipBig: '#ecf0f1', ghost: '#2ecc71', hunter: '#2c3e50', player: '#f1c40f', rock: '#7f8c8d', island: '#27ae60', portHome: '#d4ac0d', portSmall: '#a67c52', portMed: '#8e6b3e', portBig: '#7d6608', gull: '#ecf0f1', wreck: '#8e6b3e' };
 function draw() {
     const cx = CX(), cy = CY(), W = canvas.width, H = canvas.height;
     ctx.clearRect(0, 0, W, H);
@@ -1035,6 +1155,7 @@ function draw() {
     ports.forEach(port => { const p = getScr(port.x, port.y), k = PORT_SPR[port.type] || 'portMed'; if (vis(p, 200)) drawSprite(k, p.x, p.y, port.radius * 2.6, 0, 1, true, FB[k]); });
     islands.forEach(i => { const p = getScr(i.x, i.y); if (vis(p, 200)) drawSprite('island', p.x, p.y, i.radius * 2.6, 0, 1, true, FB.island); });
     treasureSites.forEach(t => { const p = getScr(t.x, t.y); if (vis(p, 200)) drawSprite('island', p.x, p.y, t.radius * 2.6, 0, 1, true, FB.island); });
+    wrecks.forEach(w => { const p = getScr(w.x, w.y); if (vis(p, 200)) { drawSprite('wreck', p.x, p.y, 90, w.angle, 1, true, FB.wreck); if (w.state === 'uninspected') { ctx.font = "16px Arial"; ctx.textAlign = "center"; ctx.fillText("💀", p.x, p.y - 48); } } });
     rocks.forEach(r => { const p = getScr(r.x, r.y); if (vis(p, 120)) drawSprite('rock', p.x, p.y, r.size * 2, 0, 1, true, FB.rock); });
     enemies.forEach(e => {
         if (isNaN(e.x)) return;
@@ -1077,6 +1198,8 @@ function draw() {
         const inMap = (dx, dy) => Math.hypot(dx, dy) < mid - 12;
         ports.forEach(p => { const dx = (p.x - player.gX) * scale, dy = (p.y - player.gY) * scale; if (inMap(dx, dy)) { ctx.fillStyle = "black"; ctx.font = "italic bold 8px serif"; ctx.textAlign = "center"; ctx.fillText(p.name, mid + dx, mid + dy - 8); ctx.font = "12px Arial"; ctx.fillText("⚓", mid + dx, mid + dy + 5); } });
         treasureSites.forEach(t => { const dx = (t.x - player.gX) * scale, dy = (t.y - player.gY) * scale; if (inMap(dx, dy)) { ctx.font = "10px Arial"; ctx.fillText("🏝️", mid + dx - 4, mid + dy + 4); if (t.active) { ctx.fillStyle = "red"; ctx.font = "bold 8px Arial"; ctx.fillText("X", mid + dx - 2, mid + dy + 2); } } });
+        wrecks.forEach(w => { const dx = (w.x - player.gX) * scale, dy = (w.y - player.gY) * scale; if (inMap(dx, dy)) { ctx.font = "10px Arial"; ctx.fillText(w.state === 'uninspected' ? "💀" : "⚓", mid + dx - 5, mid + dy + 4); } });
+        if (rumorMark) { const dx = (rumorMark.x - player.gX) * scale, dy = (rumorMark.y - player.gY) * scale; if (inMap(dx, dy)) { ctx.fillStyle = "red"; ctx.font = "bold 12px Arial"; ctx.fillText("X", mid + dx - 4, mid + dy + 4); } }
         islands.forEach(i => { const dx = (i.x - player.gX) * scale, dy = (i.y - player.gY) * scale; if (inMap(dx, dy)) { ctx.font = "10px Arial"; ctx.fillText("🏝️", mid + dx - 4, mid + dy + 4); } });
         enemies.forEach(e => {
             const dx = (e.x - player.gX) * scale, dy = (e.y - player.gY) * scale; if (!inMap(dx, dy)) return;
