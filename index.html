@@ -749,11 +749,19 @@ function updateProceduralSpawns() {
     if (wrecks.length < 3 && Math.random() < 0.001) {
         const anchors = islands.concat(treasureSites);
         if (anchors.length > 0) { const a0 = anchors[Math.floor(Math.random() * anchors.length)], a = ang();
-            wrecks.push({ x: a0.x + Math.cos(a) * (a0.radius + 40), y: a0.y + Math.sin(a) * (a0.radius + 40), angle: Math.random() * Math.PI * 2, state: 'uninspected' }); }
+            wrecks.push({ x: a0.x + Math.cos(a) * (a0.radius + 40), y: a0.y + Math.sin(a) * (a0.radius + 40), angle: Math.random() * Math.PI * 2, state: 'uninspected', born: gameTime }); }
     }
     if (wrecks.length < 3 && rocks.length > 0 && Math.random() < 0.0005) { const r = rocks[Math.floor(Math.random() * rocks.length)], a = ang();
-        wrecks.push({ x: r.x + Math.cos(a) * 100, y: r.y + Math.sin(a) * 100, angle: Math.random() * Math.PI * 2, state: 'uninspected' }); }
-    wrecks = wrecks.filter(w => w.rumor || dist(player.gX, player.gY, w.x, w.y) < 7000);
+        wrecks.push({ x: r.x + Math.cos(a) * 100, y: r.y + Math.sin(a) * 100, angle: Math.random() * Math.PI * 2, state: 'uninspected', born: gameTime }); }
+    // Un naufragio sin investigar se hunde y desaparece a los 2 minutos
+    wrecks = wrecks.filter(w => {
+        if (w.born === undefined) w.born = gameTime;
+        if (gameTime - w.born > 120) {
+            if (w.rumor) { if (rumorMark && dist(rumorMark.x, rumorMark.y, w.x, w.y) < 500) rumorMark = null; showMsg("💀 El naufragio del rumor se hundió sin ser investigado.", "#95a5a6"); }
+            return false;
+        }
+        return w.rumor || dist(player.gX, player.gY, w.x, w.y) < 7000;
+    });
     treasureSites = treasureSites.filter(t => dist(player.gX, player.gY, t.x, t.y) < 7000); // excavadas se quedan como islas, igual que las demas
 }
 
@@ -775,7 +783,7 @@ function threeWayActive() {
 }
 // Barcos peleando contigo en mar abierto: los que te cazan y los de la batalla de tres
 function openSeaFighters() {
-    return enemies.filter(e => e.ai === 'approach' || (e.ai === 'skirmish' && e.threeWay));
+    return enemies.filter(e => e.ai === 'approach' || (e.ai === 'skirmish' && e.threeWay) || (e.chase && e.ai === 'flee' && !e.fleeFrom));
 }
 function inOpenSeaFight() {
     return gameState === STATE.ROAMING && openSeaFighters().length > 0;
@@ -813,7 +821,7 @@ function combatFireAtPlayer(e) {
 // Hundir un barco en mar abierto: el perdedor se convierte en naufragio
 function sinkShipRoaming(e, byPlayer) {
     spawnExplosion(e.x, e.y, '#e74c3c'); sfx('sink');
-    wrecks.push({ x: e.x, y: e.y, angle: e.angle, state: 'uninspected' });
+    wrecks.push({ x: e.x, y: e.y, angle: e.angle, state: 'uninspected', type: e.type, born: gameTime });
     if (byPlayer) {
         const g = e.type === 'big' ? 150 : e.type === 'med' ? 100 : 50;
         const rum = e.type === 'big' ? Math.floor(Math.random() * 6) + 5 : e.type === 'med' ? Math.floor(Math.random() * 5) + 1 : Math.floor(Math.random() * 3) + 1;
@@ -998,7 +1006,7 @@ function acceptRumor() {
     const a = Math.random() * Math.PI * 2, d = 1200 + Math.random() * 800;
     const x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d;
     if (r.loc === 'wreck') {
-        wrecks.push({ x, y, angle: Math.random() * Math.PI * 2, state: 'uninspected', rumor: true });
+        wrecks.push({ x, y, angle: Math.random() * Math.PI * 2, state: 'uninspected', rumor: true, born: gameTime });
         rumorMark = { x, y, fake: false };
         showMsg("📍 Naufragio marcado en el minimapa", "#f1c40f");
     } else {
@@ -1012,21 +1020,23 @@ function inspectWreck(w) {
     if (rumorMark && dist(rumorMark.x, rumorMark.y, w.x, w.y) < 500) rumorMark = null;
     const roll = Math.random();
     if (roll < 0.2) {
-        w.state = 'looted'; w.rumor = false;
-        const type = Math.random() < 0.6 ? 'normal' : 'med';
-        const hp = type === 'med' ? 100 : 50, size = type === 'med' ? 25 : 20, spd = type === 'med' ? 1.2 : 0.8;
+        // ¡TRAMPA! El barco es el mismo que se hundió, pero dañado (la mitad de vida)
+        const type = w.type || (Math.random() < 0.6 ? 'normal' : 'med');
+        const maxHp = type === 'big' ? 150 : type === 'med' ? 100 : 50;
+        const hp = Math.max(1, Math.floor(maxHp * 0.5)), size = type === 'big' ? 30 : type === 'med' ? 25 : 20, spd = type === 'big' ? 1.0 : type === 'med' ? 1.2 : 0.8;
         showMsg("¡ERA UNA TRAMPA! ¡Piratas emboscados!", "#e74c3c"); sfx('cannon');
-        startBattle({ x: w.x, y: w.y, angle: 0, hp, maxHp: hp, size, type, reload: 60, canFlee: true, speed: spd });
+        startBattle({ x: w.x, y: w.y, angle: 0, hp, maxHp, size, type, reload: 60, canFlee: true, speed: spd });
     } else if (roll < 0.6) {
-        w.state = 'looted'; w.rumor = false;
         const g = Math.floor(Math.random() * 401) + 100, rum = Math.floor(Math.random() * 11) + 5;
         player.inventory.gold += g; player.inventory.rum += rum;
         if (Math.random() < 0.15) { player.mapCount++; showMsg("¡MAPA ENCONTRADO!", "#9b59b6"); }
         showMsg(`+${g} ORO / +${rum} RON`, "#f1c40f"); sfx('coin');
     } else {
-        w.state = 'empty'; w.rumor = false;
         showMsg("Solo madera podrida... no hay nada útil.", "#bdc3c7");
     }
+    // Al investigarlo, el naufragio se hunde y desaparece del mapa y del radar
+    spawnExplosion(w.x, w.y, '#5dade2'); sfx('sink');
+    wrecks = wrecks.filter(x => x !== w);
 }
 function enterPort(port) {
     currentPort = port; gameState = STATE.PORT; player.speed = 0; player.isSailing = false; ui.anchorBtn.classList.remove('sailing');
@@ -1055,14 +1065,14 @@ function pickShipAI(e) {
         if (dP < 1800) { if (roll < 0.6) return 'avoid'; if (roll < 0.85) return 'flee'; return 'sail'; }
         return roll < 0.8 ? 'sail' : 'avoid';
     }
-    if (e.type === 'med') { // medianos: cazan si estas muy herido, te evitan si estas fuerte
-        if (hpF < 0.25) { if (roll < 0.7) return 'approach'; if (roll < 0.9) return 'sail'; return 'avoid'; }
-        if (hpF > 0.5) { if (roll < 0.45) return 'avoid'; if (roll < 0.9) return 'sail'; return 'approach'; }
-        if (roll < 0.5) return 'sail'; if (roll < 0.8) return 'approach'; return 'avoid';
+    if (e.type === 'med') { // medianos: cazan si estas muy herido, te evitan si estas fuerte (el mar no siempre es hostil)
+        if (hpF < 0.25) { if (roll < 0.4) return 'approach'; if (roll < 0.8) return 'sail'; return 'avoid'; }
+        if (hpF > 0.5) { if (roll < 0.5) return 'avoid'; if (roll < 0.95) return 'sail'; return 'approach'; }
+        if (roll < 0.6) return 'sail'; if (roll < 0.75) return 'approach'; return 'avoid';
     }
     // grandes: te buscan si tienes menos de la mitad de HP, a veces siguen su rumbo
-    if (hpF < 0.5) { if (roll < 0.6) return 'approach'; return 'sail'; }
-    if (roll < 0.7) return 'sail'; if (roll < 0.9) return 'approach'; return 'avoid';
+    if (hpF < 0.5) { if (roll < 0.35) return 'approach'; return 'sail'; }
+    if (roll < 0.8) return 'sail'; if (roll < 0.9) return 'approach'; return 'avoid';
 }
 
 // === UPDATE ===
@@ -1179,16 +1189,18 @@ function update() {
                 e.x += Math.sin(e.angle) * e.speed; e.y -= Math.cos(e.angle) * e.speed;
             } else {
                 // IA de barcos: cada uno navega a su antojo segun su tipo
-                if (--e.aiTimer <= 0 && e.ai !== 'skirmish') { e.ai = pickShipAI(e); e.aiTimer = 360 + Math.random() * 360; if (e.ai === 'approach' && !canJoinFight(e)) e.ai = 'avoid'; } // batallas de tres como máximo
+                if (--e.aiTimer <= 0 && e.ai !== 'skirmish') { e.ai = pickShipAI(e); e.chase = false; e.aiTimer = 360 + Math.random() * 360; if (e.ai === 'approach' && !canJoinFight(e)) e.ai = 'avoid'; } // batallas de tres como máximo
                 // El Cazador asusta: los barcos que lo ven huyen de él, no de ti (los de escaramuza no se mueven)
                 const hunterShip = enemies.find(x => x.type === 'hunter');
-                if (hunterShip && e.ai !== 'skirmish' && dist(e.x, e.y, hunterShip.x, hunterShip.y) < 1500) { e.fleeFrom = hunterShip; if (e.ai !== 'flee') { e.ai = 'flee'; e.aiTimer = 360 + Math.random() * 360; } }
+                if (hunterShip && e.ai !== 'skirmish' && dist(e.x, e.y, hunterShip.x, hunterShip.y) < 1500) { e.fleeFrom = hunterShip; e.chase = false; if (e.ai !== 'flee') { e.ai = 'flee'; e.aiTimer = 360 + Math.random() * 360; } }
                 else e.fleeFrom = null;
                 // Un barco que te ataca huye si lo dejas muy herido, y deja de perseguirte si te alejas
                 if (e.ai === 'approach') {
-                    if ((e.type === 'normal' && e.hp < e.maxHp * 0.5) || (e.type === 'med' && e.hp < e.maxHp * 0.3)) { e.ai = 'flee'; e.aiTimer = 360 + Math.random() * 360; }
-                    else if (dist(e.x, e.y, player.gX, player.gY) > 2000) { e.ai = 'sail'; e.aiTimer = 360 + Math.random() * 360; }
+                    if ((e.type === 'normal' && e.hp < e.maxHp * 0.5) || (e.type === 'med' && e.hp < e.maxHp * 0.3)) { e.ai = 'flee'; e.chase = true; e.aiTimer = 1200 + Math.random() * 600; } // huye lejos (20-30 s): corretealo para derribarlo
+                    else if (dist(e.x, e.y, player.gX, player.gY) > 2000) { e.ai = 'sail'; e.aiTimer = 1200 + Math.random() * 600; } // después de una pelea, el mar se calma un rato
                 }
+                // Persecución: si el barco que huía se aleja demasiado, escapó y la caza termina
+                if (e.chase && e.ai === 'flee' && !e.fleeFrom && dist(e.x, e.y, player.gX, player.gY) > 2000) { e.chase = false; e.ai = 'sail'; e.aiTimer = 1200 + Math.random() * 600; }
                 const toP = Math.atan2(player.gX - e.x, -(player.gY - e.y));
                 let spd = e.speed;
                 if (e.ai === 'sail') { if (Math.random() < 0.005) e.wanderA = Math.random() * Math.PI * 2; turnToward(e, e.wanderA, 0.02); }
@@ -1226,6 +1238,19 @@ function update() {
                 else if (e.ai !== 'skirmish' && canJoinFight(e)) { e.ai = 'approach'; e.aiTimer = 360 + Math.random() * 360; e.reloadP = 90 + Math.random() * 60; } // tocar un barco en mar abierto: te ataca ahí mismo
             }
         });
+        // Colisión entre barcos en mar abierto: se empujan y se desvían, no se atraviesan
+        for (let i = 0; i < enemies.length; i++) {
+            for (let j = i + 1; j < enemies.length; j++) {
+                const a = enemies[i], b = enemies[j];
+                const d = dist(a.x, a.y, b.x, b.y), min = a.size + b.size;
+                if (d < min && d > 0) {
+                    const push = (min - d) / 2, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d;
+                    a.x -= ux * push; a.y -= uy * push;
+                    b.x += ux * push; b.y += uy * push;
+                    a.angle += 0.15; b.angle -= 0.15;
+                }
+            }
+        }
     } else if (gameState === STATE.BATTLE && battleEnemy) {
         const b = battleEnemy, dToP = dist(player.gX, player.gY, b.x, b.y);
         if (dToP < 55) {
