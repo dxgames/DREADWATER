@@ -157,6 +157,9 @@ const CFG = {
     dayFrames: 9423,             // duración del día en frames = duración de dia.m4a (157.1 s)
     nightFrames: 10687,          // duración de la noche en frames = duración de noche.mp3 (178.1 s)
     ghostP: 0.00002,             // prob. por frame de que aparezca el Fantasma (solo de noche)
+    ultratumbaP: 0.05,           // prob. de noche de ultratumba al caer la noche (1 de cada 20 noches)
+    ultratumbaFrames: 18000,     // duracion del evento: 5 min a 60 fps
+    ghostBoost: 5,               // multiplicador de prob. del Fantasma durante el evento
     hunterGold: 6000,            // oro mínimo para que el Cazador pueda aparecer
     hunterBaseP: 0.000005,       // prob. por frame del Cazador al llegar a ese oro
     hunterStepP: 0.0000015,      // lo que sube por cada 1000 de oro extra
@@ -374,6 +377,7 @@ function sfx(name) {
 const STATE = { MENU: 0, ROAMING: 1, BATTLE: 2, PORT: 3, SINKING: 4, MAP: 5 };
 let gameState = STATE.MENU, gameTime = 0, dayClock = 0, wasNight = false;
 let hunterCD = 0, ghostCD = 0, resolving = false, lastBattleType = null, lostGold = 0, currentAction = null;
+let ultratumba = false, ultratumbaTimer = 0; // evento noche de ultratumba
 const settings = { vibrate: true, music: true, ambient: true, sound: true };
 let mapCam = { x: 0, y: 0, zoom: 1 };
 let mapDrag = { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0, dist: 0, tapX: 0, tapY: 0, tapT: 0, lastTapAt: 0, mouse: null };
@@ -672,10 +676,11 @@ function updateProceduralSpawns() {
         }
     }
     // EL FANTASMA: solo de noche, probabilidad muy baja, no se puede escapar
-    if (isNight() && ghostCD <= 0 && !hasType('ghost') && Math.random() < CFG.ghostP) {
+    if (isNight() && ghostCD <= 0 && !hasType('ghost') && Math.random() < CFG.ghostP * (ultratumba ? CFG.ghostBoost : 1)) {
         const a = ang();
-        enemies.push({ x: player.gX + Math.cos(a) * 2200, y: player.gY + Math.sin(a) * 2200, angle: ang(), hp: 1000, maxHp: 1000, size: 35, type: 'ghost', reload: 60, canFlee: false, noEscape: true, speed: 2.2 });
-        showMsg("¡SENTIRÁS EL FRÍO!", "#2ecc71"); sfx('ghost');
+        // Durante la noche de ultratumba el Fantasma es el doble de fuerte (x2 dano) y +15% de vida
+        enemies.push({ x: player.gX + Math.cos(a) * 2200, y: player.gY + Math.sin(a) * 2200, angle: ang(), hp: ultratumba ? 1150 : 1000, maxHp: ultratumba ? 1150 : 1000, size: 35, type: 'ghost', reload: 60, canFlee: false, noEscape: true, speed: 2.2, buffed: !!ultratumba });
+        showMsg(ultratumba ? "👻 ¡EL FANTASMA DE ULTRATUMBA!" : "¡SENTIRÁS EL FRÍO!", "#2ecc71"); sfx('ghost');
     }
     // Barcos normales
     if (enemies.length < 8) {
@@ -749,7 +754,7 @@ function triggerSinking(win) {
     spawnExplosion(sinkingEnemy.x, sinkingEnemy.y, '#e74c3c'); sfx('sink');
     let gold, rum, maps = 0, msg = "¡VICTORIA!";
     const t = battleEnemy.type;
-    if (t === 'ghost') { gold = 10000; rum = 100; maps = 3; msg = "¡FANTASMA HUNDIDO!"; }
+    if (t === 'ghost') { gold = 10000; rum = 100; maps = 3; msg = "¡FANTASMA HUNDIDO!"; if (battleEnemy.buffed) { gold *= 2; rum *= 2; maps *= 2; msg = "¡FANTASMA DE ULTRATUMBA HUNDIDO!"; } }
     else if (t === 'hunter') { gold = 2000; rum = Math.floor(Math.random() * 11) + 10; maps = 1; }
     else if (t === 'big') { gold = 150; rum = Math.floor(Math.random() * 6) + 5; if (Math.random() < 0.1) maps = 1; }
     else if (t === 'med') { gold = 100; rum = Math.floor(Math.random() * 5) + 1; if (Math.random() < 0.05) maps = 1; }
@@ -939,7 +944,15 @@ function pickShipAI(e) {
 // === UPDATE ===
 let lastReloading = false;
 function update() {
-    if (gameState !== STATE.MENU) dayClock++;
+    // El tiempo no avanza en batalla (la noche se queda donde estaba hasta que termina)
+    // ni durante la noche de ultratumba (la noche se alarga 5 min).
+    if (gameState !== STATE.MENU && gameState !== STATE.BATTLE && !ultratumba) dayClock++;
+    if (ultratumba && gameState !== STATE.MENU && gameState !== STATE.BATTLE && --ultratumbaTimer <= 0) {
+        ultratumba = false;
+        dayClock = CFG.dayFrames + CFG.nightFrames - 600; // el amanecer llega en ~10 s
+        showMsg("🌅 La noche de ultratumba termina...", "#2ecc71");
+        playDayNightMusic();
+    }
     gameTime += 0.05;
     updateProceduralSpawns();
     seagulls.forEach(g => {
@@ -966,7 +979,16 @@ function update() {
 
     if (gameState === STATE.ROAMING) {
         const n = isNight();
-        if (n !== wasNight) { wasNight = n; showMsg(n ? "🌙 CAE LA NOCHE" : "☀️ AMANECE", n ? "#9b9bff" : "#f1c40f"); playDayNightMusic(); }
+        if (n !== wasNight) {
+            wasNight = n; showMsg(n ? "🌙 CAE LA NOCHE" : "☀️ AMANECE", n ? "#9b9bff" : "#f1c40f"); playDayNightMusic();
+            // NOCHE DE ULTRATUMBA: al caer la noche, probabilidad extremadamente baja
+            if (n && !ultratumba && Math.random() < CFG.ultratumbaP) {
+                ultratumba = true; ultratumbaTimer = CFG.ultratumbaFrames;
+                showMsg("🌫️ ¡NOCHE DE ULTRATUMBA!", "#2ecc71"); playMusic('ghost'); sfx('ghost');
+            }
+            // Al amanecer, el Fantasma se desvanece (regla general, no solo del evento)
+            if (!n) { const gi = enemies.findIndex(e => e.type === 'ghost'); if (gi >= 0) { enemies.splice(gi, 1); showMsg("👻 El Fantasma se desvanece con el amanecer", "#2ecc71"); } }
+        }
         if (player.isSailing && ++player.rumConsumptionTimer > 1800) { if (player.inventory.rum > 0) player.inventory.rum--; player.rumConsumptionTimer = 0; }
     }
 
@@ -1086,7 +1108,7 @@ function update() {
             const dx = player.gX - b.x, dy = player.gY - b.y;
             const side = dx * Math.cos(b.angle) + dy * Math.sin(b.angle), fwd = dx * Math.sin(b.angle) - dy * Math.cos(b.angle);
             let shot = false;
-            const sh = (off, sp) => { const a = b.angle + off; projectiles.push({ x: b.x, y: b.y, vx: Math.sin(a) * sp, vy: -Math.cos(a) * sp, life: 60, hostile: true, damage: 10 }); shot = true; };
+            const sh = (off, sp) => { const a = b.angle + off; projectiles.push({ x: b.x, y: b.y, vx: Math.sin(a) * sp, vy: -Math.cos(a) * sp, life: 60, hostile: true, damage: b.buffed ? 20 : 10 }); shot = true; };
             if (b.type === 'big' || b.type === 'hunter' || b.type === 'ghost') { if (fwd > 50) sh(0, 7); else if (fwd < -50) sh(Math.PI, 7); }
             if (side > 50) sh(1.57, 6.5); else if (side < -50) sh(-1.57, 6.5);
             if (shot) { b.reload = 60 + Math.random() * 40; sfx('cannon'); }
@@ -1177,6 +1199,23 @@ function draw() {
     const dk = darkness();
     if (dk > 0 && gameState !== STATE.MENU) { ctx.fillStyle = `rgba(5,10,40,${dk * 0.5})`; ctx.fillRect(0, 0, W, H); }
 
+    // Noche de ultratumba: luna verde y niebla verde (mas espesa si el Fantasma esta presente)
+    if (ultratumba && gameState !== STATE.MENU) {
+        const ghostHere = enemies.some(e => e.type === 'ghost');
+        ctx.fillStyle = `rgba(46,204,113,${ghostHere ? 0.18 : 0.10})`; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = 'rgba(46,204,113,0.06)';
+        for (let i = 0; i < 6; i++) {
+            const fx = ((i * 317 + gameTime * 12) % (W + 300)) - 150, fy = (i * 97) % H;
+            ctx.beginPath(); ctx.ellipse(fx, fy, 180, 60, 0, 0, Math.PI * 2); ctx.fill();
+        }
+        const mx = W * 0.32, my = 85; // luna verde en el cielo
+        const glow = ctx.createRadialGradient(mx, my, 5, mx, my, 60);
+        glow.addColorStop(0, 'rgba(46,204,113,0.5)'); glow.addColorStop(1, 'rgba(46,204,113,0)');
+        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(mx, my, 60, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#2ecc71'; ctx.beginPath(); ctx.arc(mx, my, 26, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(39,174,96,0.8)'; ctx.beginPath(); ctx.arc(mx - 8, my - 5, 6, 0, Math.PI * 2); ctx.arc(mx + 9, my + 8, 4, 0, Math.PI * 2); ctx.fill();
+    }
+
     // Gaviotas: por encima del mundo y de la noche, pero por debajo del HUD (minimapa y controles)
     seagulls.forEach(g => { const p = getScr(g.x, g.y); if (vis(p, 80)) drawSprite('gull', p.x, p.y, g.size, g.angle, 1, true, FB.gull); });
 
@@ -1187,6 +1226,7 @@ function draw() {
         ctx.textAlign = 'left'; ctx.font = 'bold 16px sans-serif';
         ctx.fillStyle = '#f1c40f'; ctx.fillText(`💰 ${player.inventory.gold}`, 10, 45);
         ctx.fillStyle = player.inventory.rum <= 0 ? '#e74c3c' : '#e67e22'; ctx.fillText(`🍾 ${player.inventory.rum}`, 100, 45);
+        if (ultratumba) { ctx.fillStyle = 'rgba(46,204,113,0.6)'; ctx.beginPath(); ctx.arc(78, 64, 15, 0, Math.PI * 2); ctx.fill(); }
         ctx.fillStyle = 'white'; ctx.fillText(`🗺️ ${player.mapCount}`, 10, 70); ctx.fillText(isNight() ? '🌙' : '☀️', 70, 70);
 
         const ms = 150, m = 10, mid = ms / 2, mapRange = 2000, scale = mid / mapRange * 0.93;   // radar con zoom: muestra 2000 m para que barcos e islas entren por el borde
