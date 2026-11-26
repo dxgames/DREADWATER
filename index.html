@@ -725,16 +725,15 @@ function updateProceduralSpawns() {
     }
     // Batallas entre barcos: de vez en cuando dos barcos se encuentran y pelean
     if (--skirmishCD <= 0) {
-        skirmishCD = 5400 + Math.random() * 5400;
+        skirmishCD = 4800 + Math.random() * 4800;
         const fighters = enemies.filter(e => (e.type === 'normal' || e.type === 'med' || e.type === 'big') && e.ai !== 'skirmish');
+        // Los grandes y medianos buscan pelea desde mas lejos: cuentan como si estuvieran mas cerca
+        const w = e => e.type === 'big' ? 400 : e.type === 'med' ? 200 : 0;
         let best = null, bestD = 1200;
-        for (let i = 0; i < fighters.length; i++) for (let j = i + 1; j < fighters.length; j++) { const d = dist(fighters[i].x, fighters[i].y, fighters[j].x, fighters[j].y); if (d < bestD) { bestD = d; best = [fighters[i], fighters[j]]; } }
-        if (best) {
-            best[0].ai = 'skirmish'; best[0].foe = best[1]; best[0].skDir = 1; best[0].reload = 90 + Math.random() * 60;
-            best[1].ai = 'skirmish'; best[1].foe = best[0]; best[1].skDir = -1; best[1].reload = 90 + Math.random() * 60;
-            if (dist(best[0].x, best[0].y, player.gX, player.gY) < 2000) showMsg("⚔️ ¡Batalla entre barcos a lo lejos!", "#e67e22");
-        }
+        for (let i = 0; i < fighters.length; i++) for (let j = i + 1; j < fighters.length; j++) { const d = dist(fighters[i].x, fighters[i].y, fighters[j].x, fighters[j].y) - w(fighters[i]) - w(fighters[j]); if (d < bestD) { bestD = d; best = [fighters[i], fighters[j]]; } }
+        if (best) startSkirmish(best[0], best[1]);
     }
+    tryCloseSkirmish();
     if (rocks.length < 12) { const a = ang(); rocks.push({ x: player.gX + Math.cos(a) * 2200, y: player.gY + Math.sin(a) * 2200, size: 50 }); }
     if (islands.length < 4) { const a = ang(); islands.push({ x: player.gX + Math.cos(a) * 3200, y: player.gY + Math.sin(a) * 3200, radius: 80 + Math.random() * 40 }); }
     if (treasureSites.filter(t => t.active).length < player.mapCount) {
@@ -747,15 +746,61 @@ function updateProceduralSpawns() {
     enemies = enemies.filter(e => e.type === 'ghost' || dist(player.gX, player.gY, e.x, e.y) < (e.type === 'hunter' ? CFG.radar : 5000));
     rocks = rocks.filter(r => dist(player.gX, player.gY, r.x, r.y) < 4000);
     islands = islands.filter(i => dist(player.gX, player.gY, i.x, i.y) < 7000);
-    if (wrecks.length < 3 && Math.random() < 0.002) {
+    if (wrecks.length < 3 && Math.random() < 0.001) {
         const anchors = islands.concat(treasureSites);
         if (anchors.length > 0) { const a0 = anchors[Math.floor(Math.random() * anchors.length)], a = ang();
             wrecks.push({ x: a0.x + Math.cos(a) * (a0.radius + 40), y: a0.y + Math.sin(a) * (a0.radius + 40), angle: Math.random() * Math.PI * 2, state: 'uninspected' }); }
     }
-    if (wrecks.length < 3 && rocks.length > 0 && Math.random() < 0.001) { const r = rocks[Math.floor(Math.random() * rocks.length)], a = ang();
+    if (wrecks.length < 3 && rocks.length > 0 && Math.random() < 0.0005) { const r = rocks[Math.floor(Math.random() * rocks.length)], a = ang();
         wrecks.push({ x: r.x + Math.cos(a) * 100, y: r.y + Math.sin(a) * 100, angle: Math.random() * Math.PI * 2, state: 'uninspected' }); }
     wrecks = wrecks.filter(w => w.rumor || dist(player.gX, player.gY, w.x, w.y) < 7000);
     treasureSites = treasureSites.filter(t => dist(player.gX, player.gY, t.x, t.y) < 7000); // excavadas se quedan como islas, igual que las demas
+}
+
+// === BATALLAS EN MAR ABIERTO ===
+function startSkirmish(a, b) {
+    a.ai = 'skirmish'; a.foe = b; a.skDir = 1; a.reload = 90 + Math.random() * 60; a.reloadP = 120;
+    b.ai = 'skirmish'; b.foe = a; b.skDir = -1; b.reload = 90 + Math.random() * 60; b.reloadP = 120;
+    if (dist(a.x, a.y, player.gX, player.gY) < 2000) showMsg("⚔️ ¡Batalla entre barcos a lo lejos!", "#e67e22");
+}
+// Si dos barcos pasan muy juntos, querran pelear aunque no toque el turno
+function tryCloseSkirmish() {
+    const fighters = enemies.filter(e => (e.type === 'normal' || e.type === 'med' || e.type === 'big') && e.ai !== 'skirmish');
+    for (let i = 0; i < fighters.length; i++) for (let j = i + 1; j < fighters.length; j++) {
+        if (dist(fighters[i].x, fighters[i].y, fighters[j].x, fighters[j].y) < 400) { startSkirmish(fighters[i], fighters[j]); skirmishCD = 4800 + Math.random() * 4800; return; }
+    }
+}
+function threeWayActive() {
+    return gameState === STATE.ROAMING && enemies.some(e => e.ai === 'skirmish' && e.threeWay && dist(e.x, e.y, player.gX, player.gY) < 800);
+}
+// Un barco en batalla de tres tambien dispara al jugador (con adelanto, como a su rival)
+function skirmishFireAtPlayer(e) {
+    if (!e.threeWay) return;
+    const dP = dist(e.x, e.y, player.gX, player.gY);
+    if (dP > 500 || (e.reloadP -= 1) > 0) return;
+    const tFly = dP / 7, px = player.gX + Math.sin(player.angle) * (player.speed || 0) * tFly, py = player.gY - Math.cos(player.angle) * (player.speed || 0) * tFly;
+    const a = Math.atan2(px - e.x, -(py - e.y)) + (Math.random() - 0.5) * 0.15;
+    projectiles.push({ x: e.x, y: e.y, vx: Math.sin(a) * 7, vy: -Math.cos(a) * 7, life: 80, hostile: true, damage: 10 });
+    e.reloadP = 120 + Math.random() * 60;
+    if (dP < 1500) sfx('cannon');
+}
+// Hundir un barco en mar abierto: el perdedor se convierte en naufragio
+function sinkShipRoaming(e, byPlayer) {
+    spawnExplosion(e.x, e.y, '#e74c3c'); sfx('sink');
+    wrecks.push({ x: e.x, y: e.y, angle: e.angle, state: 'uninspected' });
+    if (byPlayer) {
+        const g = e.type === 'big' ? 150 : e.type === 'med' ? 100 : 50;
+        const rum = e.type === 'big' ? Math.floor(Math.random() * 6) + 5 : e.type === 'med' ? Math.floor(Math.random() * 5) + 1 : Math.floor(Math.random() * 3) + 1;
+        player.inventory.gold += g; player.inventory.rum += rum;
+        let extra = '';
+        const mp = e.type === 'big' ? 0.1 : e.type === 'med' ? 0.05 : 0.01;
+        if (Math.random() < mp) { player.mapCount++; extra = ' ¡MAPA!'; }
+        showMsg(`💰 +${g} ORO / +${rum} RON${extra}`, "#f1c40f");
+    } else if (dist(e.x, e.y, player.gX, player.gY) < 2000) {
+        showMsg("💥 ¡Un barco se hundió en la batalla!", "#e67e22");
+    }
+    enemies = enemies.filter(x => x !== e);
+    enemies.forEach(x => { if (x.ai === 'skirmish' && x.foe === e) { x.foe = null; if (!x.threeWay) x.ai = 'sail'; } });
 }
 
 // === BATALLA ===
@@ -1060,14 +1105,14 @@ function update() {
         ports.forEach(p => {
             const d = dist(player.gX, player.gY, p.x, p.y);
             pushOut(p.x, p.y, p.radius + 10, p.radius + 11, -0.3);
-            if (d < 350 && player.speed < 1.5) { ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "⚓ AMARRAR"; currentAction = () => enterPort(p); inRange = true; }
+            if (d < p.radius + 40 && player.speed < 1.5) { ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "⚓ AMARRAR"; currentAction = () => enterPort(p); inRange = true; }
         });
         treasureSites.forEach(t => {
             pushOut(t.x, t.y, t.radius - 20, t.radius - 15, -0.5);
-            if (t.active && dist(player.gX, player.gY, t.x, t.y) < 300) { ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "💎 EXCAVAR"; currentAction = () => dig(t); inRange = true; }
+            if (t.active && dist(player.gX, player.gY, t.x, t.y) < t.radius + 30) { ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "💎 EXCAVAR"; currentAction = () => dig(t); inRange = true; }
         });
         wrecks.forEach(w => {
-            if (w.state === 'uninspected' && dist(player.gX, player.gY, w.x, w.y) < 300) { ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "🔍 INSPECCIONAR"; currentAction = () => inspectWreck(w); inRange = true; }
+            if (w.state === 'uninspected' && dist(player.gX, player.gY, w.x, w.y) < 150) { ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "🔍 INSPECCIONAR"; currentAction = () => inspectWreck(w); inRange = true; }
         });
         if (!inRange) ui.actionBtn.style.display = 'none';
         islands.forEach(i => pushOut(i.x, i.y, i.radius - 20, i.radius - 15, -0.5));
@@ -1078,6 +1123,20 @@ function update() {
             player.hp -= 1; vibrate(100); sfx('bump');
             if (player.hp <= 0 && !resolving) { resolving = true; gameState = STATE.SINKING; showMsg("¡NAUFRAGIO!", "#c0392b"); setTimeout(playerDefeat, 2000); }
         });
+        // Batalla de tres: si el jugador se mete en una escaramuza (<250 m), los dos barcos tambien le disparan
+        {
+            const sk = enemies.filter(e => e.ai === 'skirmish');
+            if (sk.length > 0) {
+                if (!sk.some(e => e.threeWay) && sk.some(e => dist(e.x, e.y, player.gX, player.gY) < 250)) {
+                    sk.forEach(e => { e.threeWay = true; e.reloadP = 90 + Math.random() * 60; });
+                    ui.btnShootF.style.visibility = player.upgrades.frontCannon ? 'visible' : 'hidden';
+                    ui.btnShootB.style.visibility = player.upgrades.rearCannon ? 'visible' : 'hidden';
+                    showMsg("⚔️ ¡Te metiste en la batalla!", "#e67e22"); sfx('cannon');
+                }
+                if (!sk.some(e => e.threeWay && dist(e.x, e.y, player.gX, player.gY) < 800)) sk.forEach(e => { e.threeWay = false; });
+            }
+            ui.fireControls.style.display = threeWayActive() ? 'flex' : 'none';
+        }
         enemies.forEach(e => {
             if (e.type === 'hunter' || e.type === 'ghost') {
                 if (e.type === 'ghost') e.speed = Math.max(2.2, maxSpeed() + 0.25);    // siempre más rápido que tú
@@ -1095,8 +1154,9 @@ function update() {
                 else if (e.ai === 'flee') { turnToward(e, toP + Math.PI + Math.sin(gameTime * 0.5) * 0.4, 0.05); spd = e.speed * 1.6; }
                 else if (e.ai === 'skirmish') {
                     const f = e.foe;
-                    if (!f || !enemies.includes(f) || dist(e.x, e.y, f.x, f.y) > 2000) { e.ai = 'sail'; e.foe = null; }
-                    else {
+                    const foeAlive = f && enemies.includes(f) && dist(e.x, e.y, f.x, f.y) <= 2000;
+                    if (!foeAlive && !(e.threeWay && dist(e.x, e.y, player.gX, player.gY) < 800)) { e.ai = 'sail'; e.foe = null; e.threeWay = false; }
+                    else if (foeAlive) {
                         const dx = e.x - f.x, dy = e.y - f.y, d = Math.max(1, Math.hypot(dx, dy));
                         if (d > 450) turnToward(e, Math.atan2(f.x - e.x, -(f.y - e.y)), 0.1); // acercarse al rival
                         else { const ux = dx / d, uy = dy / d, tx = -uy * (e.skDir || 1), ty = ux * (e.skDir || 1), corr = 0.02 * (350 - d); turnToward(e, Math.atan2(tx + ux * corr, -(ty + uy * corr)), 0.06); } // orbitar y disparar
@@ -1108,6 +1168,12 @@ function update() {
                             e.reload = 90 + Math.random() * 60;
                             if (dist(e.x, e.y, player.gX, player.gY) < 1500) sfx('cannon');
                         }
+                        skirmishFireAtPlayer(e);
+                    } else {
+                        // El rival se hundio: si el jugador se metio, seguir peleando contra el
+                        turnToward(e, Math.atan2(player.gX - e.x, -(player.gY - e.y)), 0.05);
+                        spd = e.speed * 1.2;
+                        skirmishFireAtPlayer(e);
                     }
                 }
                 e.x += Math.sin(e.angle) * spd; e.y -= Math.cos(e.angle) * spd;
@@ -1165,31 +1231,39 @@ function update() {
 
     projectiles.forEach(p => {
         p.x += p.vx; p.y += p.vy; p.life--;
-        if (p.hostile && gameState === STATE.BATTLE && dist(p.x, p.y, player.gX, player.gY) < 18) {
+        if (p.hostile && (gameState === STATE.BATTLE || gameState === STATE.ROAMING) && dist(p.x, p.y, player.gX, player.gY) < 18) {
             player.hp -= Math.max(1, p.damage - player.upgrades.hull); p.life = 0;
-            spawnExplosion(p.x, p.y, '#7f8c8d'); vibrate(200); sfx('hit'); if (player.hp <= 0) triggerSinking(false);
+            spawnExplosion(p.x, p.y, '#7f8c8d'); vibrate(200); sfx('hit');
+            if (player.hp <= 0) {
+                if (gameState === STATE.BATTLE) triggerSinking(false);
+                else if (!resolving) { resolving = true; gameState = STATE.SINKING; showMsg("¡HUNDIDO EN COMBATE!", "#c0392b"); setTimeout(playerDefeat, 2000); }
+            }
         }
         if (!p.hostile && !p.npc && battleEnemy && dist(p.x, p.y, battleEnemy.x, battleEnemy.y) < 25) {
             battleEnemy.hp -= 10 + player.upgrades.cannons; p.life = 0;
             spawnExplosion(p.x, p.y, '#7f8c8d'); sfx('hit'); if (battleEnemy.hp <= 0) triggerSinking(true);
+        }
+        if (!p.hostile && !p.npc && gameState === STATE.ROAMING && threeWayActive()) {
+            for (const e of enemies) {
+                if (e.type === 'hunter' || e.type === 'ghost' || dist(p.x, p.y, e.x, e.y) >= 25) continue;
+                e.hp -= 10 + player.upgrades.cannons; p.life = 0;
+                spawnExplosion(p.x, p.y, '#7f8c8d'); sfx('hit');
+                if (e.hp <= 0) sinkShipRoaming(e, true);
+                break;
+            }
         }
         if (p.npc && p.target && gameState === STATE.ROAMING) {
             const t = p.target;
             if (!enemies.includes(t)) { p.life = 0; }
             else if (dist(p.x, p.y, t.x, t.y) < 25) {
                 t.hp -= 10; p.life = 0; spawnExplosion(p.x, p.y, '#7f8c8d'); sfx('hit');
-                if (t.hp <= 0) {
-                    spawnExplosion(t.x, t.y, '#e74c3c'); sfx('sink');
-                    if (dist(t.x, t.y, player.gX, player.gY) < 2000) showMsg("💥 ¡Un barco se hundió en la batalla!", "#e67e22");
-                    enemies = enemies.filter(e => e !== t);
-                    enemies.forEach(e => { if (e.ai === 'skirmish' && e.foe === t) { e.ai = 'sail'; e.foe = null; } });
-                }
+                if (t.hp <= 0) sinkShipRoaming(t, false);
             }
         }
     });
     projectiles = projectiles.filter(p => p.life > 0);
 
-    const rl = player.reloadTimer > 0 && gameState === STATE.BATTLE;
+    const rl = player.reloadTimer > 0 && (gameState === STATE.BATTLE || threeWayActive());
     if (rl !== lastReloading) { lastReloading = rl; fireBtns.forEach(b => b.classList.toggle('reloading', rl)); }
 }
 
@@ -1277,7 +1351,7 @@ function draw() {
         if (ultratumba) { ctx.fillStyle = 'rgba(46,204,113,0.6)'; ctx.beginPath(); ctx.arc(78, 64, 15, 0, Math.PI * 2); ctx.fill(); }
         ctx.fillStyle = 'white'; ctx.fillText(`🗺️ ${player.mapCount}`, 10, 70); ctx.fillText(isNight() ? '🌙' : '☀️', 70, 70);
 
-        const ms = 150, m = 10, mid = ms / 2, mapRange = 2000, scale = mid / mapRange * 0.93;   // radar con zoom: muestra 2000 m para que barcos e islas entren por el borde
+        const ms = 150, m = 10, mid = ms / 2, mapRange = 2300, scale = mid / mapRange * 0.93;   // radar con zoom: muestra 2300 m para que barcos e islas entren por el borde
         ctx.save(); ctx.translate(W - ms - m, m);
         // Minimapa redondo: todo queda recortado dentro del círculo
         ctx.beginPath(); ctx.arc(mid, mid, mid, 0, Math.PI * 2); ctx.clip();
@@ -1337,7 +1411,7 @@ function draw() {
 // === CONTROLES (pointer events: se pueden tocar varios botones a la vez) ===
 function resetKeys() { keys.Left = keys.Right = false; }
 function fire(off) {
-    if (gameState !== STATE.BATTLE || player.reloadTimer > 0 || resolving) return;
+    if ((gameState !== STATE.BATTLE && !(gameState === STATE.ROAMING && threeWayActive())) || player.reloadTimer > 0 || resolving) return;
     const a = player.angle + off;
     projectiles.push({ x: player.gX, y: player.gY, vx: Math.sin(a) * 7, vy: -Math.cos(a) * 7, life: 50, hostile: false });
     player.reloadTimer = 60; sfx('cannon');
