@@ -104,6 +104,7 @@ h2{color:#f1c40f;text-align:center;margin:0 0 15px;text-shadow:2px 2px 0 #000;te
         <h2>MAPA DE NAVEGACIÓN</h2>
         <button class="btn-ui" onclick="closeMap()">▶ REANUDAR</button>
         <button class="btn-ui" onclick="goToMainMenu()">🏠 MENÚ PRINCIPAL</button>
+        <button class="btn-ui" id="btn-clear-dest" onclick="clearDestination()" style="display:none">❌ QUITAR DESTINO</button>
     </div>
     <canvas id="mapCanvas" style="border:2px solid #f1c40f;background:#000;margin:10px;touch-action:none"></canvas>
 </div>
@@ -323,7 +324,7 @@ let gameState = STATE.MENU, gameTime = 0, dayClock = 0, wasNight = false;
 let hunterCD = 0, ghostCD = 0, resolving = false, lastBattleType = null, lostGold = 0, currentAction = null;
 const settings = { vibrate: true, music: true, ambient: true, sound: true };
 let mapCam = { x: 0, y: 0, zoom: 1 };
-let mapDrag = { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0, dist: 0 };
+let mapDrag = { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0, dist: 0, tapX: 0, tapY: 0, tapT: 0, lastTapAt: 0, mouse: null };
 
 const player = {
     gX: 180, gY: 0, angle: Math.PI / 2, speed: 0, baseMaxSpeed: 1.9, accel: 0.03,
@@ -351,6 +352,7 @@ const ANIM_STEP = { portHome: 0.36, portSmall: 0.36, portMed: 0.36, portBig: 0.3
 
 let enemies = [], rocks = [], islands = [], projectiles = [], wakeParticles = [], explosions = [];
 let skirmishCD = 6000; // frames hasta buscar la proxima batalla entre barcos
+let destination = null; // destino marcado en el mapa {x, y} o null
 let seagulls = [];
 // IA de gaviotas: cada una cambia sola de estado con temporizador.
 // wander = a su antojo | flock = en parvada | follow = sigue el barco |
@@ -477,7 +479,21 @@ function resumeGame() {
 }
 
 // === MAPA AMPLIADO ===
-function openMap() { pauseGame(); gameState = STATE.MAP; ui.controls.style.display = 'none'; ui.actionBtn.style.display = 'none'; ui.mapScreen.classList.add('visible'); mapCam = { x: 0, y: 0, zoom: 1 }; drawFullMap(); }
+function updateDestBtn() { const b = $('btn-clear-dest'); if (b) b.style.display = destination ? 'block' : 'none'; }
+function setDestination(wx, wy) {
+    destination = { x: wx, y: wy };
+    updateDestBtn(); drawFullMap();
+    showMsg("📍 Destino: " + fmtDist(dist(player.gX, player.gY, wx, wy)), "#f1c40f");
+}
+function clearDestination() { destination = null; updateDestBtn(); drawFullMap(); }
+function setDestinationFromScreen(clientX, clientY) {
+    const r = mapCanvas.getBoundingClientRect(), rx = mapCanvas.width / r.width, ry = mapCanvas.height / r.height;
+    const sx = (clientX - r.left) * rx, sy = (clientY - r.top) * ry;
+    const cx = mapCanvas.width / 2, cy = mapCanvas.height / 2, z = mapCam.zoom, scale = cx / 70000;
+    mapDrag.lastTapAt = Date.now();
+    setDestination((sx - cx - mapCam.x) / (z * scale), (sy - cy - mapCam.y) / (z * scale));
+}
+function openMap() { pauseGame(); gameState = STATE.MAP; ui.controls.style.display = 'none'; ui.actionBtn.style.display = 'none'; ui.mapScreen.classList.add('visible'); mapCam = { x: 0, y: 0, zoom: 1 }; updateDestBtn(); drawFullMap(); }
 function closeMap() { ui.mapScreen.classList.remove('visible'); ui.controls.style.display = 'flex'; gameState = STATE.ROAMING; resumeGame(); }
 function goToMainMenu() {
     paused = false;
@@ -486,7 +502,7 @@ function goToMainMenu() {
 }
 mapCanvas.addEventListener('touchstart', e => {
     e.preventDefault();
-    if (e.touches.length === 1) { mapDrag.active = true; mapDrag.startX = e.touches[0].clientX; mapDrag.startY = e.touches[0].clientY; mapDrag.lastX = mapCam.x; mapDrag.lastY = mapCam.y; }
+    if (e.touches.length === 1) { mapDrag.active = true; mapDrag.startX = e.touches[0].clientX; mapDrag.startY = e.touches[0].clientY; mapDrag.lastX = mapCam.x; mapDrag.lastY = mapCam.y; mapDrag.tapX = e.touches[0].clientX; mapDrag.tapY = e.touches[0].clientY; mapDrag.tapT = Date.now(); }
     else if (e.touches.length === 2) mapDrag.dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
 }, { passive: false });
 mapCanvas.addEventListener('touchmove', e => {
@@ -498,7 +514,19 @@ mapCanvas.addEventListener('touchmove', e => {
         mapCam.zoom = Math.max(0.5, Math.min(5, mapCam.zoom + (nd - mapDrag.dist) * 0.01)); mapDrag.dist = nd; drawFullMap();
     }
 }, { passive: false });
-mapCanvas.addEventListener('touchend', () => { mapDrag.active = false; });
+mapCanvas.addEventListener('touchend', e => {
+    mapDrag.active = false;
+    if (mapDrag.tapT && Date.now() - mapDrag.tapT < 500) {
+        const t = e.changedTouches[0];
+        if (t && Math.hypot(t.clientX - mapDrag.tapX, t.clientY - mapDrag.tapY) < 12) setDestinationFromScreen(t.clientX, t.clientY);
+    }
+    mapDrag.tapT = 0;
+});
+mapCanvas.addEventListener('mousedown', e => { mapDrag.mouse = { x: e.clientX, y: e.clientY }; });
+mapCanvas.addEventListener('mouseup', e => {
+    if (mapDrag.mouse && Math.hypot(e.clientX - mapDrag.mouse.x, e.clientY - mapDrag.mouse.y) < 12 && Date.now() - mapDrag.lastTapAt > 500) setDestinationFromScreen(e.clientX, e.clientY);
+    mapDrag.mouse = null;
+});
 
 function drawTriangle(c, x, y, size, angle) {
     c.save(); c.translate(x, y); c.rotate(angle); c.beginPath();
@@ -518,11 +546,16 @@ function drawFullMap() {
         mapCtx.fillStyle = "#bdc3c7"; mapCtx.font = `${10 / z}px monospace`; mapCtx.textAlign = "center"; mapCtx.fillText(p.name, mx, my - 6 / z);
     });
     treasureSites.forEach(t => {
-        if (!t.active) return;
         const mx = cx + t.x * scale, my = cy + t.y * scale;
         mapCtx.textAlign = "center"; mapCtx.font = `${16 / z}px Arial`; mapCtx.fillText("🏝️", mx, my + 5 / z);
-        mapCtx.fillStyle = "red"; mapCtx.font = `bold ${14 / z}px Arial`; mapCtx.fillText("X", mx, my + 5 / z);
+        if (t.active) { mapCtx.fillStyle = "red"; mapCtx.font = `bold ${14 / z}px Arial`; mapCtx.fillText("X", mx, my + 5 / z); }
     });
+    if (destination) {
+        const mx = cx + destination.x * scale, my = cy + destination.y * scale;
+        mapCtx.strokeStyle = "#f1c40f"; mapCtx.lineWidth = 2 / z;
+        mapCtx.beginPath(); mapCtx.arc(mx, my, 9 / z, 0, Math.PI * 2); mapCtx.stroke();
+        mapCtx.textAlign = "center"; mapCtx.font = `${16 / z}px Arial`; mapCtx.fillText("📍", mx, my + 5 / z);
+    }
     drawTriangle(mapCtx, cx + player.gX * scale, cy + player.gY * scale, 8 / z, player.angle);
     mapCtx.restore();
 }
@@ -534,6 +567,7 @@ canvas.addEventListener('pointerdown', e => {
 
 // === UTILIDADES ===
 function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+function fmtDist(d) { return d < 1000 ? Math.round(d) + ' m' : (d / 1000).toFixed(1).replace('.', ',') + ' km'; }
 function showMsg(text, color) {
     const el = document.createElement('div'); el.className = 'pop-msg'; el.innerText = text; el.style.color = color || 'white';
     $('msg-area').appendChild(el); setTimeout(() => el.remove(), 2500);
@@ -541,6 +575,20 @@ function showMsg(text, color) {
 function spawnExplosion(x, y, color) {
     for (let i = 0; i < 20; i++) explosions.push({ x, y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, size: Math.floor(Math.random() * 8 + 4), life: 1.5, color: color || '#e67e22' });
 }
+// Colision de barcos con islas: los empuja fuera y los desvia (tambien enemigos)
+function collideIslands(o) {
+    const hit = (x, y, r) => {
+        const d = dist(o.x, o.y, x, y);
+        if (d >= r - 15) return;
+        const a = Math.atan2(o.y - y, o.x - x);
+        o.x = x + Math.cos(a) * (r - 15); o.y = y + Math.sin(a) * (r - 15);
+        o.angle = Math.atan2(o.x - x, -(o.y - y));
+        if ('wanderA' in o) o.wanderA = o.angle;
+    };
+    islands.forEach(i => hit(i.x, i.y, i.radius));
+    treasureSites.forEach(t => hit(t.x, t.y, t.radius));
+}
+
 // Empuja al jugador fuera de un círculo; devuelve true si hubo choque
 function pushOut(x, y, minD, keepD, spd) {
     if (dist(player.gX, player.gY, x, y) >= minD) return false;
@@ -562,7 +610,7 @@ function updateProceduralSpawns() {
         const p = CFG.hunterBaseP + CFG.hunterStepP * Math.floor((gold - CFG.hunterGold) / 1000);
         if (Math.random() < p) {
             const a = ang();
-            enemies.push({ x: player.gX + Math.cos(a) * 1500, y: player.gY + Math.sin(a) * 1500, angle: ang(), hp: 500, maxHp: 500, size: 25, type: 'hunter', reload: 50, canFlee: false, speed: 2.0 });
+            enemies.push({ x: player.gX + Math.cos(a) * 2400, y: player.gY + Math.sin(a) * 2400, angle: ang(), hp: 500, maxHp: 500, size: 25, type: 'hunter', reload: 50, canFlee: false, speed: 2.0 });
             showMsg("¡EL CAZADOR!", "#c0392b");
         }
     }
@@ -578,7 +626,7 @@ function updateProceduralSpawns() {
         let type = 'normal', size = 20, hp = 50, canFlee = true, spd = 0.8;
         if (r < 0.2) { type = 'big'; size = 30; hp = 150; canFlee = Math.random() < 0.3; spd = 1.0; }
         else if (r < 0.5) { type = 'med'; size = 25; hp = 100; canFlee = Math.random() < 0.3; spd = 1.2; }
-        enemies.push({ x: player.gX + Math.cos(a) * 1800, y: player.gY + Math.sin(a) * 1800, angle: ang(), hp, maxHp: hp, size, type, reload: 60, canFlee, speed: spd, ai: 'sail', aiTimer: 200 + Math.random() * 300, wanderA: ang() });
+        enemies.push({ x: player.gX + Math.cos(a) * 2400, y: player.gY + Math.sin(a) * 2400, angle: ang(), hp, maxHp: hp, size, type, reload: 60, canFlee, speed: spd, ai: 'sail', aiTimer: 200 + Math.random() * 300, wanderA: ang() });
     }
     // Batallas entre barcos: de vez en cuando dos barcos se encuentran y pelean
     if (--skirmishCD <= 0) {
@@ -592,9 +640,9 @@ function updateProceduralSpawns() {
             if (dist(best[0].x, best[0].y, player.gX, player.gY) < 2000) showMsg("⚔️ ¡Batalla entre barcos a lo lejos!", "#e67e22");
         }
     }
-    if (rocks.length < 12) { const a = ang(); rocks.push({ x: player.gX + Math.cos(a) * 1500, y: player.gY + Math.sin(a) * 1500, size: 50 }); }
-    if (islands.length < 4) { const a = ang(); islands.push({ x: player.gX + Math.cos(a) * 2500, y: player.gY + Math.sin(a) * 2500, radius: 80 + Math.random() * 40 }); }
-    if (treasureSites.length < player.mapCount) {
+    if (rocks.length < 12) { const a = ang(); rocks.push({ x: player.gX + Math.cos(a) * 2200, y: player.gY + Math.sin(a) * 2200, size: 50 }); }
+    if (islands.length < 4) { const a = ang(); islands.push({ x: player.gX + Math.cos(a) * 3200, y: player.gY + Math.sin(a) * 3200, radius: 80 + Math.random() * 40 }); }
+    if (treasureSites.filter(t => t.active).length < player.mapCount) {
         const a = ang(), d = 4000 + Math.random() * 3000;
         treasureSites.push({ x: player.gX + Math.cos(a) * d, y: player.gY + Math.sin(a) * d, active: true, radius: 100 });
     }
@@ -604,7 +652,7 @@ function updateProceduralSpawns() {
     enemies = enemies.filter(e => e.type === 'ghost' || dist(player.gX, player.gY, e.x, e.y) < (e.type === 'hunter' ? CFG.radar : 5000));
     rocks = rocks.filter(r => dist(player.gX, player.gY, r.x, r.y) < 4000);
     islands = islands.filter(i => dist(player.gX, player.gY, i.x, i.y) < 7000);
-    treasureSites = treasureSites.filter(t => t.active || dist(player.gX, player.gY, t.x, t.y) < 2000);
+    treasureSites = treasureSites.filter(t => dist(player.gX, player.gY, t.x, t.y) < 7000); // excavadas se quedan como islas, igual que las demas
 }
 
 // === BATALLA ===
@@ -829,12 +877,12 @@ function update() {
             if (d < 350 && player.speed < 1.5) { ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "⚓ AMARRAR"; currentAction = () => enterPort(p); inRange = true; }
         });
         treasureSites.forEach(t => {
-            if (!t.active) return;
             pushOut(t.x, t.y, t.radius - 20, t.radius - 15, -0.5);
-            if (dist(player.gX, player.gY, t.x, t.y) < 300) { ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "💎 EXCAVAR"; currentAction = () => dig(t); inRange = true; }
+            if (t.active && dist(player.gX, player.gY, t.x, t.y) < 300) { ui.actionBtn.style.display = 'block'; ui.actionBtn.innerText = "💎 EXCAVAR"; currentAction = () => dig(t); inRange = true; }
         });
         if (!inRange) ui.actionBtn.style.display = 'none';
         islands.forEach(i => pushOut(i.x, i.y, i.radius - 20, i.radius - 15, -0.5));
+        if (destination && dist(player.gX, player.gY, destination.x, destination.y) < 150) { destination = null; updateDestBtn(); showMsg("📍 ¡Destino alcanzado!", "#2ecc71"); sfx('coin'); }
         rocks.forEach(r => {
             if (!pushOut(r.x, r.y, r.size - 15, r.size, -0.8)) return;
             player.hp -= 1; vibrate(100); sfx('bump');
@@ -874,6 +922,7 @@ function update() {
                 }
                 e.x += Math.sin(e.angle) * spd; e.y -= Math.cos(e.angle) * spd;
             }
+            collideIslands(e); // los barcos ya no atraviesan las islas
             if (gameState === STATE.ROAMING && dist(e.x, e.y, player.gX, player.gY) < 60 + e.size) startBattle(e);
         });
     } else if (gameState === STATE.BATTLE && battleEnemy) {
@@ -985,7 +1034,7 @@ function draw() {
     });
     ports.forEach(port => { const p = getScr(port.x, port.y), k = PORT_SPR[port.type] || 'portMed'; if (vis(p, 200)) drawSprite(k, p.x, p.y, port.radius * 2.6, 0, 1, true, FB[k]); });
     islands.forEach(i => { const p = getScr(i.x, i.y); if (vis(p, 200)) drawSprite('island', p.x, p.y, i.radius * 2.6, 0, 1, true, FB.island); });
-    treasureSites.forEach(t => { if (!t.active) return; const p = getScr(t.x, t.y); if (vis(p, 200)) drawSprite('island', p.x, p.y, t.radius * 2.6, 0, 1, true, FB.island); });
+    treasureSites.forEach(t => { const p = getScr(t.x, t.y); if (vis(p, 200)) drawSprite('island', p.x, p.y, t.radius * 2.6, 0, 1, true, FB.island); });
     rocks.forEach(r => { const p = getScr(r.x, r.y); if (vis(p, 120)) drawSprite('rock', p.x, p.y, r.size * 2, 0, 1, true, FB.rock); });
     enemies.forEach(e => {
         if (isNaN(e.x)) return;
@@ -1019,7 +1068,7 @@ function draw() {
         ctx.fillStyle = player.inventory.rum <= 0 ? '#e74c3c' : '#e67e22'; ctx.fillText(`🍾 ${player.inventory.rum}`, 100, 45);
         ctx.fillStyle = 'white'; ctx.fillText(`🗺️ ${player.mapCount}`, 10, 70); ctx.fillText(isNight() ? '🌙' : '☀️', 70, 70);
 
-        const ms = 150, m = 10, mid = ms / 2, scale = mid / CFG.radar * 0.93;   // el borde del minimapa coincide con el radar
+        const ms = 150, m = 10, mid = ms / 2, mapRange = 2000, scale = mid / mapRange * 0.93;   // radar con zoom: muestra 2000 m para que barcos e islas entren por el borde
         ctx.save(); ctx.translate(W - ms - m, m);
         // Minimapa redondo: todo queda recortado dentro del círculo
         ctx.beginPath(); ctx.arc(mid, mid, mid, 0, Math.PI * 2); ctx.clip();
@@ -1027,7 +1076,7 @@ function draw() {
         if (sprites.minimap.complete && sprites.minimap.naturalWidth > 0) ctx.drawImage(sprites.minimap, 0, 0, ms, ms);
         const inMap = (dx, dy) => Math.hypot(dx, dy) < mid - 12;
         ports.forEach(p => { const dx = (p.x - player.gX) * scale, dy = (p.y - player.gY) * scale; if (inMap(dx, dy)) { ctx.fillStyle = "black"; ctx.font = "italic bold 8px serif"; ctx.textAlign = "center"; ctx.fillText(p.name, mid + dx, mid + dy - 8); ctx.font = "12px Arial"; ctx.fillText("⚓", mid + dx, mid + dy + 5); } });
-        treasureSites.forEach(t => { if (!t.active) return; const dx = (t.x - player.gX) * scale, dy = (t.y - player.gY) * scale; if (inMap(dx, dy)) { ctx.font = "10px Arial"; ctx.fillText("🏝️", mid + dx - 4, mid + dy + 4); ctx.fillStyle = "red"; ctx.font = "bold 8px Arial"; ctx.fillText("X", mid + dx - 2, mid + dy + 2); } });
+        treasureSites.forEach(t => { const dx = (t.x - player.gX) * scale, dy = (t.y - player.gY) * scale; if (inMap(dx, dy)) { ctx.font = "10px Arial"; ctx.fillText("🏝️", mid + dx - 4, mid + dy + 4); if (t.active) { ctx.fillStyle = "red"; ctx.font = "bold 8px Arial"; ctx.fillText("X", mid + dx - 2, mid + dy + 2); } } });
         islands.forEach(i => { const dx = (i.x - player.gX) * scale, dy = (i.y - player.gY) * scale; if (inMap(dx, dy)) { ctx.font = "10px Arial"; ctx.fillText("🏝️", mid + dx - 4, mid + dy + 4); } });
         enemies.forEach(e => {
             const dx = (e.x - player.gX) * scale, dy = (e.y - player.gY) * scale; if (!inMap(dx, dy)) return;
@@ -1046,6 +1095,31 @@ function draw() {
         ctx.restore();
         ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.strokeStyle = "black"; ctx.lineWidth = 3; ctx.fillStyle = "white";
         ctx.strokeText("⏸ toca = pausa", W - ms - m + mid, m + ms + 12); ctx.fillText("⏸ toca = pausa", W - ms - m + mid, m + ms + 12);
+    }
+    // Destino: flecha en el borde de la pantalla + metros que faltan
+    if (destination && gameState === STATE.ROAMING) {
+        const dD = dist(player.gX, player.gY, destination.x, destination.y);
+        const dp = getScr(destination.x, destination.y);
+        const dScr = Math.hypot(dp.x - cx, dp.y - cy);
+        ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center"; ctx.strokeStyle = "black"; ctx.lineWidth = 3; ctx.fillStyle = "white";
+        if (dScr < 90) {
+            ctx.save(); ctx.translate(dp.x, dp.y); ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = "#e74c3c"; ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+            ctx.strokeText("📍 " + fmtDist(dD), dp.x, dp.y - 22); ctx.fillText("📍 " + fmtDist(dD), dp.x, dp.y - 22);
+        } else {
+            const dx = dp.x - cx, dy = dp.y - cy;
+            const tx = Math.min((W / 2 - 80) / Math.max(1, Math.abs(dx)), (H / 2 - 80) / Math.max(1, Math.abs(dy)));
+            let ax = cx + dx * tx, ay = cy + dy * tx;
+            if (ax > W - 175 && ay < 190) ax = W - 185; // no tapar el minimapa
+            if (ay > H - 160) ay = H - 170; // no tapar los controles
+            const aa = Math.atan2(dx, -dy);
+            ctx.save(); ctx.translate(ax, ay); ctx.rotate(aa);
+            ctx.fillStyle = "#f1c40f"; ctx.strokeStyle = "#000"; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(0, -18); ctx.lineTo(13, 12); ctx.lineTo(-13, 12); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+            const ty = ay > H - 110 ? ay - 26 : ay + 28;
+            ctx.strokeText(fmtDist(dD), ax, ty); ctx.fillText(fmtDist(dD), ax, ty);
+        }
     }
 }
 
