@@ -773,9 +773,35 @@ function tryCloseSkirmish() {
 function threeWayActive() {
     return gameState === STATE.ROAMING && enemies.some(e => e.ai === 'skirmish' && e.threeWay && dist(e.x, e.y, player.gX, player.gY) < 800);
 }
-// Un barco en batalla de tres tambien dispara al jugador (con adelanto, como a su rival)
-function skirmishFireAtPlayer(e) {
-    if (!e.threeWay) return;
+// Barcos peleando contigo en mar abierto: los que te cazan y los de la batalla de tres
+function openSeaFighters() {
+    return enemies.filter(e => e.ai === 'approach' || (e.ai === 'skirmish' && e.threeWay));
+}
+function inOpenSeaFight() {
+    return gameState === STATE.ROAMING && openSeaFighters().length > 0;
+}
+// Batallas de tres como máximo: solo pueden pelear contigo otros dos barcos
+function canJoinFight(e) {
+    return openSeaFighters().filter(x => x !== e).length < 2;
+}
+function battleTrackFor(type) { return type === 'big' ? 'battleBig' : type === 'med' ? 'battleMed' : 'battleSmall'; }
+// Música de combate en mar abierto: suena la del barco que te ataca; si la pelea
+// es de tres, la difícil; si es de dos, la normal de ese barco. El Cazador y la
+// noche de ultratumba mandan su propia música y no se les toca.
+function updateCombatMusic() {
+    if (gameState !== STATE.ROAMING) return;
+    if (enemies.some(e => e.type === 'hunter') || ultratumba) return;
+    const f = openSeaFighters();
+    let want = null;
+    if (f.length >= 2) want = 'battleBig'; // pelea de tres: música difícil
+    else if (f.length === 1) want = battleTrackFor(f[0].type); // pelea de dos: la música de ese barco
+    if (want) { if (currentMusic !== audio[want]) playMusic(want); }
+    else playDayNightMusic();
+}
+// Un barco que pelea contigo en mar abierto también te dispara (con adelanto, como a su rival)
+function combatFireAtPlayer(e) {
+    if (!(e.ai === 'approach' || (e.ai === 'skirmish' && e.threeWay))) return;
+    if (e.reloadP === undefined) e.reloadP = 90 + Math.random() * 60;
     const dP = dist(e.x, e.y, player.gX, player.gY);
     if (dP > 500 || (e.reloadP -= 1) > 0) return;
     const tFly = dP / 7, px = player.gX + Math.sin(player.angle) * (player.speed || 0) * tFly, py = player.gY - Math.cos(player.angle) * (player.speed || 0) * tFly;
@@ -803,7 +829,12 @@ function sinkShipRoaming(e, byPlayer) {
     enemies.forEach(x => { if (x.ai === 'skirmish' && x.foe === e) { x.foe = null; if (!x.threeWay) x.ai = 'sail'; } });
 }
 
-// === BATALLA ===
+// === BATALLA (arena) ===
+// La arena es solo para peleas importantes: trampas de naufragio, el Cazador y el
+// Fantasma (duelos 1 a 1). Las peleas normales son en mar abierto. Para combates
+// múltiples futuros (misiones de conquista, asaltos a puertos) la base está en la
+// variante de arena de tres (parche_arena_tres.py): el bucle de batalla itera
+// sobre todos los enemigos en vez de un solo battleEnemy.
 function startBattle(e) {
     if (isNaN(e.x)) return;
     resolving = false; lastBattleType = e.type;
@@ -1127,15 +1158,18 @@ function update() {
         {
             const sk = enemies.filter(e => e.ai === 'skirmish');
             if (sk.length > 0) {
-                if (!sk.some(e => e.threeWay) && sk.some(e => dist(e.x, e.y, player.gX, player.gY) < 250)) {
+                if (!sk.some(e => e.threeWay) && sk.some(e => dist(e.x, e.y, player.gX, player.gY) < 250) && enemies.filter(x => x.ai === 'approach').length < 2) {
                     sk.forEach(e => { e.threeWay = true; e.reloadP = 90 + Math.random() * 60; });
-                    ui.btnShootF.style.visibility = player.upgrades.frontCannon ? 'visible' : 'hidden';
-                    ui.btnShootB.style.visibility = player.upgrades.rearCannon ? 'visible' : 'hidden';
+                    enemies.forEach(x => { if (x.ai === 'approach') { x.ai = 'avoid'; x.aiTimer = 360 + Math.random() * 360; } }); // batallas de tres como máximo: los demás no se meten
                     showMsg("⚔️ ¡Te metiste en la batalla!", "#e67e22"); sfx('cannon');
                 }
                 if (!sk.some(e => e.threeWay && dist(e.x, e.y, player.gX, player.gY) < 800)) sk.forEach(e => { e.threeWay = false; });
             }
-            ui.fireControls.style.display = threeWayActive() ? 'flex' : 'none';
+            if (inOpenSeaFight()) {
+                ui.btnShootF.style.visibility = player.upgrades.frontCannon ? 'visible' : 'hidden';
+                ui.btnShootB.style.visibility = player.upgrades.rearCannon ? 'visible' : 'hidden';
+            }
+            ui.fireControls.style.display = inOpenSeaFight() ? 'flex' : 'none';
         }
         enemies.forEach(e => {
             if (e.type === 'hunter' || e.type === 'ghost') {
@@ -1145,13 +1179,22 @@ function update() {
                 e.x += Math.sin(e.angle) * e.speed; e.y -= Math.cos(e.angle) * e.speed;
             } else {
                 // IA de barcos: cada uno navega a su antojo segun su tipo
-                if (--e.aiTimer <= 0 && e.ai !== 'skirmish') { e.ai = pickShipAI(e); e.aiTimer = 360 + Math.random() * 360; }
+                if (--e.aiTimer <= 0 && e.ai !== 'skirmish') { e.ai = pickShipAI(e); e.aiTimer = 360 + Math.random() * 360; if (e.ai === 'approach' && !canJoinFight(e)) e.ai = 'avoid'; } // batallas de tres como máximo
+                // El Cazador asusta: los barcos que lo ven huyen de él, no de ti (los de escaramuza no se mueven)
+                const hunterShip = enemies.find(x => x.type === 'hunter');
+                if (hunterShip && e.ai !== 'skirmish' && dist(e.x, e.y, hunterShip.x, hunterShip.y) < 1500) { e.fleeFrom = hunterShip; if (e.ai !== 'flee') { e.ai = 'flee'; e.aiTimer = 360 + Math.random() * 360; } }
+                else e.fleeFrom = null;
+                // Un barco que te ataca huye si lo dejas muy herido, y deja de perseguirte si te alejas
+                if (e.ai === 'approach') {
+                    if ((e.type === 'normal' && e.hp < e.maxHp * 0.5) || (e.type === 'med' && e.hp < e.maxHp * 0.3)) { e.ai = 'flee'; e.aiTimer = 360 + Math.random() * 360; }
+                    else if (dist(e.x, e.y, player.gX, player.gY) > 2000) { e.ai = 'sail'; e.aiTimer = 360 + Math.random() * 360; }
+                }
                 const toP = Math.atan2(player.gX - e.x, -(player.gY - e.y));
                 let spd = e.speed;
                 if (e.ai === 'sail') { if (Math.random() < 0.005) e.wanderA = Math.random() * Math.PI * 2; turnToward(e, e.wanderA, 0.02); }
                 else if (e.ai === 'approach') { turnToward(e, toP, 0.05); spd = e.speed * 1.3; }
                 else if (e.ai === 'avoid') { turnToward(e, toP + Math.PI, 0.03); spd = e.speed * 1.2; }
-                else if (e.ai === 'flee') { turnToward(e, toP + Math.PI + Math.sin(gameTime * 0.5) * 0.4, 0.05); spd = e.speed * 1.6; }
+                else if (e.ai === 'flee') { const fx = e.fleeFrom ? e.fleeFrom.x : player.gX, fy = e.fleeFrom ? e.fleeFrom.y : player.gY; turnToward(e, Math.atan2(e.x - fx, -(e.y - fy)) + Math.sin(gameTime * 0.5) * 0.4, 0.05); spd = e.speed * 1.6; }
                 else if (e.ai === 'skirmish') {
                     const f = e.foe;
                     const foeAlive = f && enemies.includes(f) && dist(e.x, e.y, f.x, f.y) <= 2000;
@@ -1168,18 +1211,20 @@ function update() {
                             e.reload = 90 + Math.random() * 60;
                             if (dist(e.x, e.y, player.gX, player.gY) < 1500) sfx('cannon');
                         }
-                        skirmishFireAtPlayer(e);
                     } else {
                         // El rival se hundio: si el jugador se metio, seguir peleando contra el
                         turnToward(e, Math.atan2(player.gX - e.x, -(player.gY - e.y)), 0.05);
                         spd = e.speed * 1.2;
-                        skirmishFireAtPlayer(e);
                     }
                 }
+                combatFireAtPlayer(e); // si pelea contigo, también te dispara en mar abierto
                 e.x += Math.sin(e.angle) * spd; e.y -= Math.cos(e.angle) * spd;
             }
             collideIslands(e); // los barcos ya no atraviesan las islas
-            if (gameState === STATE.ROAMING && dist(e.x, e.y, player.gX, player.gY) < 60 + e.size) startBattle(e);
+            if (gameState === STATE.ROAMING && dist(e.x, e.y, player.gX, player.gY) < 60 + e.size) {
+                if (e.type === 'hunter' || e.type === 'ghost') startBattle(e); // la arena sigue para el Cazador y el Fantasma
+                else if (e.ai !== 'skirmish' && canJoinFight(e)) { e.ai = 'approach'; e.aiTimer = 360 + Math.random() * 360; e.reloadP = 90 + Math.random() * 60; } // tocar un barco en mar abierto: te ataca ahí mismo
+            }
         });
     } else if (gameState === STATE.BATTLE && battleEnemy) {
         const b = battleEnemy, dToP = dist(player.gX, player.gY, b.x, b.y);
@@ -1243,7 +1288,7 @@ function update() {
             battleEnemy.hp -= 10 + player.upgrades.cannons; p.life = 0;
             spawnExplosion(p.x, p.y, '#7f8c8d'); sfx('hit'); if (battleEnemy.hp <= 0) triggerSinking(true);
         }
-        if (!p.hostile && !p.npc && gameState === STATE.ROAMING && threeWayActive()) {
+        if (!p.hostile && !p.npc && gameState === STATE.ROAMING && inOpenSeaFight()) {
             for (const e of enemies) {
                 if (e.type === 'hunter' || e.type === 'ghost' || dist(p.x, p.y, e.x, e.y) >= 25) continue;
                 e.hp -= 10 + player.upgrades.cannons; p.life = 0;
@@ -1263,8 +1308,9 @@ function update() {
     });
     projectiles = projectiles.filter(p => p.life > 0);
 
-    const rl = player.reloadTimer > 0 && (gameState === STATE.BATTLE || threeWayActive());
+    const rl = player.reloadTimer > 0 && (gameState === STATE.BATTLE || inOpenSeaFight());
     if (rl !== lastReloading) { lastReloading = rl; fireBtns.forEach(b => b.classList.toggle('reloading', rl)); }
+    if (gameState === STATE.ROAMING) updateCombatMusic(); // música de combate en mar abierto
 }
 
 // === DIBUJO ===
@@ -1411,7 +1457,7 @@ function draw() {
 // === CONTROLES (pointer events: se pueden tocar varios botones a la vez) ===
 function resetKeys() { keys.Left = keys.Right = false; }
 function fire(off) {
-    if ((gameState !== STATE.BATTLE && !(gameState === STATE.ROAMING && threeWayActive())) || player.reloadTimer > 0 || resolving) return;
+    if ((gameState !== STATE.BATTLE && !inOpenSeaFight()) || player.reloadTimer > 0 || resolving) return;
     const a = player.angle + off;
     projectiles.push({ x: player.gX, y: player.gY, vx: Math.sin(a) * 7, vy: -Math.cos(a) * 7, life: 50, hostile: false });
     player.reloadTimer = 60; sfx('cannon');
