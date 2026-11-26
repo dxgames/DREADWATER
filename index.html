@@ -351,8 +351,14 @@ const ANIM_STEP = { portHome: 0.36, portSmall: 0.36, portMed: 0.36, portBig: 0.3
 
 let enemies = [], rocks = [], islands = [], projectiles = [], wakeParticles = [], explosions = [];
 let seagulls = [];
-function spawnGull(g) { const a = Math.random() * Math.PI * 2, d = 400 + Math.random() * 1200; g.x = player.gX + Math.sin(a) * d; g.y = player.gY + Math.cos(a) * d; g.angle = Math.random() * Math.PI * 2; g.speed = 1.2 + Math.random() * 1.1; g.size = 26 + Math.random() * 12; }
-for (let i = 0; i < 7; i++) { const g = {}; spawnGull(g); seagulls.push(g); }
+// IA de gaviotas: cada una cambia sola de estado con temporizador.
+// wander = a su antojo | flock = en parvada | follow = sigue el barco |
+// circle = vueltas alrededor del barco parado | flee = huye.
+function gullState(g) { const roll = Math.random(), stopped = player.speed < 1 || gameState === STATE.PORT, near = dist(g.x, g.y, player.gX, player.gY) < 700; if (roll < 0.34) return 'wander'; if (roll < 0.58) return 'flock'; if (roll < 0.78) return 'follow'; if (roll < 0.9 && stopped && near) return 'circle'; if (roll < 0.9) return 'wander'; return 'flee'; }
+function gullTimer(s) { return (s === 'wander' ? 4 + Math.random() * 5 : s === 'flock' ? 5 + Math.random() * 5 : s === 'follow' ? 6 + Math.random() * 4 : s === 'circle' ? 8 + Math.random() * 6 : 2 + Math.random() * 2) * 60; }
+function spawnGull(g) { const a = Math.random() * Math.PI * 2, d = 400 + Math.random() * 1200; g.x = player.gX + Math.sin(a) * d; g.y = player.gY + Math.cos(a) * d; g.angle = Math.random() * Math.PI * 2; g.cruise = 1.1 + Math.random() * 0.8; g.size = 18 + Math.random() * 8; g.state = 'wander'; g.timer = gullTimer('wander'); g.offA = Math.random() * Math.PI * 2; g.offD = 140 + Math.random() * 120; g.circR = 170 + Math.random() * 90; g.circDir = Math.random() < 0.5 ? 1 : -1; }
+for (let i = 0; i < 14; i++) { const g = {}; spawnGull(g); seagulls.push(g); }
+function turnToward(g, want, maxTurn) { let d = want - g.angle; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; g.angle += Math.max(-maxTurn, Math.min(maxTurn, d)); }
 let battleEnemy = null, sinkingEnemy = null, treasureSites = [], currentPort = null;
 const waves = [];
 for (let i = 0; i < 60; i++) waves.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, offset: Math.random() * 100 });
@@ -741,7 +747,26 @@ function update() {
     if (gameState !== STATE.MENU) dayClock++;
     gameTime += 0.05;
     updateProceduralSpawns();
-    seagulls.forEach(g => { g.angle += (Math.random() - 0.5) * 0.05; g.x += Math.sin(g.angle) * g.speed; g.y -= Math.cos(g.angle) * g.speed; if (dist(g.x, g.y, player.gX, player.gY) > 2600) spawnGull(g); });
+    seagulls.forEach(g => {
+        if (--g.timer <= 0) { g.state = gullState(g); g.timer = gullTimer(g.state); }
+        let speed = g.cruise;
+        if (g.state === 'wander') { g.angle += (Math.random() - 0.5) * 0.06; }
+        else if (g.state === 'flock') {
+            let vs = 0, vc = 0, cx = 0, cy = 0, n = 0;
+            seagulls.forEach(o => { if (o.state !== 'flock') return; n++; cx += o.x; cy += o.y; vs += Math.sin(o.angle); vc += -Math.cos(o.angle); });
+            if (n > 1) { cx /= n; cy /= n; const want = dist(g.x, g.y, cx, cy) > 200 ? Math.atan2(cx - g.x, -(cy - g.y)) : Math.atan2(vs / n, -vc / n); turnToward(g, want, 0.05); }
+            else g.angle += (Math.random() - 0.5) * 0.06;
+        }
+        else if (g.state === 'follow') { const tx = player.gX + Math.sin(g.offA) * g.offD, ty = player.gY - Math.cos(g.offA) * g.offD; turnToward(g, Math.atan2(tx - g.x, -(ty - g.y)), 0.06); speed = dist(g.x, g.y, tx, ty) > 300 ? 4.0 : Math.min(3.2, Math.max(g.cruise + 0.4, player.speed * 0.9)); }
+        else if (g.state === 'circle') {
+            if (player.speed > 1.5 && gameState !== STATE.PORT) { g.state = 'wander'; g.timer = gullTimer('wander'); }
+            else { const dx = g.x - player.gX, dy = g.y - player.gY, d = Math.max(1, Math.hypot(dx, dy)), ux = dx / d, uy = dy / d, tx = -uy * g.circDir, ty = ux * g.circDir, corr = 0.03 * (g.circR - d); turnToward(g, Math.atan2(tx + ux * corr, -(ty + uy * corr)), 0.08); speed = d > g.circR + 150 ? 3.5 : g.cruise + 0.5; }
+        }
+        else if (g.state === 'flee') { turnToward(g, Math.atan2(g.x - player.gX, -(g.y - player.gY)), 0.08); speed = 3.5; }
+        if (player.speed > 1.5 && dist(g.x, g.y, player.gX, player.gY) < 150 && g.state !== 'flee' && Math.random() < 0.05) { g.state = 'flee'; g.timer = gullTimer('flee'); }
+        g.x += Math.sin(g.angle) * speed; g.y -= Math.cos(g.angle) * speed;
+        if (dist(g.x, g.y, player.gX, player.gY) > 2600) spawnGull(g);
+    });
     if (player.reloadTimer > 0) player.reloadTimer--;
 
     if (gameState === STATE.ROAMING) {
@@ -896,6 +921,9 @@ function draw() {
     const dk = darkness();
     if (dk > 0 && gameState !== STATE.MENU) { ctx.fillStyle = `rgba(5,10,40,${dk * 0.5})`; ctx.fillRect(0, 0, W, H); }
 
+    // Gaviotas: por encima del mundo y de la noche, pero por debajo del HUD (minimapa y controles)
+    seagulls.forEach(g => { const p = getScr(g.x, g.y); if (vis(p, 80)) drawSprite('gull', p.x, p.y, g.size, g.angle, 1, true, FB.gull); });
+
     // HUD
     if (gameState !== STATE.MENU && gameState !== STATE.PORT) {
         ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(10, 10, 154, 12);
@@ -933,8 +961,6 @@ function draw() {
         ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.strokeStyle = "black"; ctx.lineWidth = 3; ctx.fillStyle = "white";
         ctx.strokeText("⏸ toca = pausa", W - ms - m + mid, m + ms + 12); ctx.fillText("⏸ toca = pausa", W - ms - m + mid, m + ms + 12);
     }
-    // Gaviotas: vuelan por arriba de todo
-    seagulls.forEach(g => { const p = getScr(g.x, g.y); if (vis(p, 80)) drawSprite('gull', p.x, p.y, g.size, g.angle, 1, true, FB.gull); });
 }
 
 // === CONTROLES (pointer events: se pueden tocar varios botones a la vez) ===
