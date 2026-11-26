@@ -20,7 +20,10 @@ canvas{display:block;background:#3498db;image-rendering:pixelated}
 .ui-layer{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;display:none;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,.85);z-index:100}
 .visible{display:flex!important;pointer-events:auto!important}
 #main-menu,#settings-menu,#about-menu{background:rgba(0,0,0,.6);z-index:200}
-#map-screen{background:rgba(15,25,35,.95);z-index:150;pointer-events:auto!important}
+#map-screen{background:rgba(15,25,35,.95);z-index:150;pointer-events:auto!important;flex-direction:row;justify-content:center;align-items:center;gap:10px}
+.map-options{display:flex;flex-direction:column;align-items:center;gap:12px;padding:10px}
+.map-options h2{margin:0 0 5px;font-size:22px}
+.map-options .btn-ui{margin-top:0;width:230px}
 .game-title-img{width:85%;max-width:550px;height:auto;margin-bottom:20px;animation:floatTitle 3s ease-in-out infinite;filter:drop-shadow(0 5px 0 rgba(0,0,0,.5))}
 #title-txt{display:none;color:#f1c40f;font-size:44px;text-shadow:3px 3px 0 #000;margin:0 0 20px;animation:floatTitle 3s ease-in-out infinite}
 @keyframes floatTitle{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
@@ -97,9 +100,12 @@ h2{color:#f1c40f;text-align:center;margin:0 0 15px;text-shadow:2px 2px 0 #000;te
 </div>
 
 <div id="map-screen" class="ui-layer" onclick="if(event.target===this)closeMap()">
-    <h2 style="margin-top:20px;color:#f1c40f">MAPA DE NAVEGACIÓN</h2>
+    <div class="map-options">
+        <h2>MAPA DE NAVEGACIÓN</h2>
+        <button class="btn-ui" onclick="closeMap()">▶ REANUDAR</button>
+        <button class="btn-ui" onclick="goToMainMenu()">🏠 MENÚ PRINCIPAL</button>
+    </div>
     <canvas id="mapCanvas" style="border:2px solid #f1c40f;background:#000;margin:10px;touch-action:none"></canvas>
-    <button class="btn-ui" style="margin-top:5px;padding:10px 30px" onclick="closeMap()">✖ CERRAR</button>
 </div>
 
 <div class="controls-layer" id="game-controls">
@@ -397,14 +403,14 @@ function loadGame() {
 
 // === MENÚS ===
 function startGame() {
-    hideAllMenus(); initAudio(); loadGame(); ui.controls.style.display = 'flex'; gameState = STATE.ROAMING;
+    goLandscape(); hideAllMenus(); initAudio(); loadGame(); ui.controls.style.display = 'flex'; gameState = STATE.ROAMING;
     updateAudioSettings(); showMsg("¡DREADWATER TE ESPERA!", "#f1c40f"); showHints();
 }
 function showHints() {
     let seen = null;
     try { seen = localStorage.getItem(HINT_KEY); localStorage.setItem(HINT_KEY, '1'); } catch (e) {}
     if (seen) return;
-    ["⚓ Toca el ancla para zarpar", "🛌 Descansa en un puerto para guardar", "🗺️ Toca el minimapa para ver el mapa"]
+    ["⚓ Toca el ancla para zarpar", "🛌 Descansa en un puerto para guardar", "⏸️ Toca el minimapa para pausar y ver el mapa"]
         .forEach((t, i) => setTimeout(() => showMsg(t, "#ecf0f1"), 2300 * (i + 1)));
 }
 function showSettings() { hideAllMenus(); ui.settingsMenu.classList.add('visible'); }
@@ -422,9 +428,44 @@ function toggleSetting(k) {
 function vibrate(ms) { if (settings.vibrate && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) {} } }
 function closeDialog() { $('dialog-modal').style.display = 'none'; }
 
+// === PANTALLA COMPLETA Y HORIZONTAL ===
+function goLandscape() {
+    try {
+        const el = document.documentElement;
+        if (el.requestFullscreen) { const p = el.requestFullscreen(); if (p && p.catch) p.catch(() => {}); }
+    } catch (e) {}
+    try { if (screen.orientation && screen.orientation.lock) { const p = screen.orientation.lock('landscape'); if (p && p.catch) p.catch(() => {}); } } catch (e) {}
+}
+function exitLandscape() {
+    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
+    try { if (document.fullscreenElement && document.exitFullscreen) { const p = document.exitFullscreen(); if (p && p.catch) p.catch(() => {}); } } catch (e) {}
+}
+// Al entrar en pantalla completa, asegurar el giro horizontal
+document.addEventListener('fullscreenchange', () => {
+    try { if (document.fullscreenElement && screen.orientation && screen.orientation.lock) { const p = screen.orientation.lock('landscape'); if (p && p.catch) p.catch(() => {}); } } catch (e) {}
+});
+
+// === PAUSA ===
+let paused = false;
+function pauseGame() {
+    paused = true;
+    audio.ambient.pause(); if (currentMusic) currentMusic.pause(); if (AC && AC.suspend) AC.suspend();
+}
+function resumeGame() {
+    paused = false;
+    if (settings.ambient) audio.ambient.play().catch(() => {});
+    if (currentMusic && settings.music) currentMusic.play().catch(() => {});
+    if (AC && AC.resume) AC.resume();
+}
+
 // === MAPA AMPLIADO ===
-function openMap() { gameState = STATE.MAP; ui.controls.style.display = 'none'; ui.actionBtn.style.display = 'none'; ui.mapScreen.classList.add('visible'); mapCam = { x: 0, y: 0, zoom: 1 }; drawFullMap(); }
-function closeMap() { ui.mapScreen.classList.remove('visible'); ui.controls.style.display = 'flex'; gameState = STATE.ROAMING; }
+function openMap() { pauseGame(); gameState = STATE.MAP; ui.controls.style.display = 'none'; ui.actionBtn.style.display = 'none'; ui.mapScreen.classList.add('visible'); mapCam = { x: 0, y: 0, zoom: 1 }; drawFullMap(); }
+function closeMap() { ui.mapScreen.classList.remove('visible'); ui.controls.style.display = 'flex'; gameState = STATE.ROAMING; resumeGame(); }
+function goToMainMenu() {
+    paused = false;
+    ui.mapScreen.classList.remove('visible'); ui.controls.style.display = 'none'; ui.actionBtn.style.display = 'none'; ui.fireControls.style.display = 'none';
+    gameState = STATE.MENU; exitLandscape(); showMain();
+}
 mapCanvas.addEventListener('touchstart', e => {
     e.preventDefault();
     if (e.touches.length === 1) { mapDrag.active = true; mapDrag.startX = e.touches[0].clientX; mapDrag.startY = e.touches[0].clientY; mapDrag.lastX = mapCam.x; mapDrag.lastY = mapCam.y; }
@@ -850,22 +891,31 @@ function draw() {
 
         const ms = 150, m = 10, mid = ms / 2, scale = mid / CFG.radar * 0.93;   // el borde del minimapa coincide con el radar
         ctx.save(); ctx.translate(W - ms - m, m);
+        // Minimapa redondo: todo queda recortado dentro del círculo
+        ctx.beginPath(); ctx.arc(mid, mid, mid, 0, Math.PI * 2); ctx.clip();
         ctx.fillStyle = 'rgba(10,30,50,0.7)'; ctx.fillRect(0, 0, ms, ms);
         if (sprites.minimap.complete && sprites.minimap.naturalWidth > 0) ctx.drawImage(sprites.minimap, 0, 0, ms, ms);
-        const inMap = (dx, dy) => Math.abs(dx) < mid - 5 && Math.abs(dy) < mid - 5;
+        const inMap = (dx, dy) => Math.hypot(dx, dy) < mid - 12;
         ports.forEach(p => { const dx = (p.x - player.gX) * scale, dy = (p.y - player.gY) * scale; if (inMap(dx, dy)) { ctx.fillStyle = "black"; ctx.font = "italic bold 8px serif"; ctx.textAlign = "center"; ctx.fillText(p.name, mid + dx, mid + dy - 8); ctx.font = "12px Arial"; ctx.fillText("⚓", mid + dx, mid + dy + 5); } });
         treasureSites.forEach(t => { if (!t.active) return; const dx = (t.x - player.gX) * scale, dy = (t.y - player.gY) * scale; if (inMap(dx, dy)) { ctx.font = "10px Arial"; ctx.fillText("🏝️", mid + dx - 4, mid + dy + 4); ctx.fillStyle = "red"; ctx.font = "bold 8px Arial"; ctx.fillText("X", mid + dx - 2, mid + dy + 2); } });
         islands.forEach(i => { const dx = (i.x - player.gX) * scale, dy = (i.y - player.gY) * scale; if (inMap(dx, dy)) { ctx.font = "10px Arial"; ctx.fillText("🏝️", mid + dx - 4, mid + dy + 4); } });
         enemies.forEach(e => {
             const dx = (e.x - player.gX) * scale, dy = (e.y - player.gY) * scale; if (!inMap(dx, dy)) return;
-            ctx.fillStyle = "#e74c3c"; if (e.type === 'hunter') ctx.fillStyle = "black";
-            if (e.type === 'ghost') ctx.fillStyle = (Math.floor(gameTime * 10) % 2 === 0) ? "#2ecc71" : "transparent";
-            ctx.beginPath(); ctx.arc(mid + dx, mid + dy, 4, 0, Math.PI * 2); ctx.fill();
+            const img = sprites[SPR[e.type] || 'shipSmall'], sz = 13;
+            ctx.save(); ctx.translate(mid + dx, mid + dy); ctx.rotate(e.angle + Math.PI);
+            if (e.type === 'ghost') ctx.globalAlpha = (Math.floor(gameTime * 10) % 2 === 0) ? 1 : 0.3;
+            if (img && img.complete && img.naturalWidth > 0) ctx.drawImage(img, -sz / 2, -sz / 2, sz, sz);
+            else { ctx.fillStyle = "#e74c3c"; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill(); }
+            ctx.restore();
         });
         drawTriangle(ctx, mid, mid, 6, player.angle);
-        ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.strokeStyle = "black"; ctx.lineWidth = 3; ctx.fillStyle = "white";
-        ctx.strokeText("🔍 toca = mapa", mid, ms + 12); ctx.fillText("🔍 toca = mapa", mid, ms + 12);
         ctx.restore();
+        // Borde redondo del minimapa
+        ctx.save(); ctx.translate(W - ms - m, m);
+        ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(mid, mid, mid - 1, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+        ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.strokeStyle = "black"; ctx.lineWidth = 3; ctx.fillStyle = "white";
+        ctx.strokeText("⏸ toca = pausa", W - ms - m + mid, m + ms + 12); ctx.fillText("⏸ toca = pausa", W - ms - m + mid, m + ms + 12);
     }
 }
 
@@ -913,6 +963,7 @@ document.addEventListener('visibilitychange', () => {
 let lastT = 0, acc = 0;
 function loop(t) {
     acc += Math.min(t - lastT, 100); lastT = t;
+    if (paused) { acc = 0; draw(); requestAnimationFrame(loop); return; }
     while (acc >= STEP) { update(); acc -= STEP; }
     draw(); requestAnimationFrame(loop);
 }
