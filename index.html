@@ -78,6 +78,7 @@ h2{color:#f1c40f;text-align:center;margin:0 0 15px;text-shadow:2px 2px 0 #000;te
     <h1 id="title-txt">DREADWATER</h1>
     <button class="menu-btn btn-play" onclick="startGame()">JUGAR</button>
     <button class="menu-btn" onclick="showSettings()">AJUSTES</button>
+    <button class="menu-btn" onclick="showHowTo()">CÓMO JUGAR</button>
     <button class="menu-btn" onclick="showAbout()">ACERCA DE</button>
 </div>
 
@@ -87,6 +88,7 @@ h2{color:#f1c40f;text-align:center;margin:0 0 15px;text-shadow:2px 2px 0 #000;te
     <button class="menu-btn" id="btn-ambient" onclick="toggleSetting('ambient')">AMBIENTE: ON</button>
     <button class="menu-btn" id="btn-sound" onclick="toggleSetting('sound')">SONIDO: ON</button>
     <button class="menu-btn" id="btn-vibrate" onclick="toggleSetting('vibrate')">VIBRACIÓN: ON</button>
+    <button class="menu-btn" id="btn-reset" style="border-color:#e74c3c;color:#e74c3c" onclick="resetSave()">🗑️ BORRAR PARTIDA</button>
     <button class="menu-btn" onclick="showMain()">VOLVER</button>
 </div>
 
@@ -96,6 +98,23 @@ h2{color:#f1c40f;text-align:center;margin:0 0 15px;text-shadow:2px 2px 0 #000;te
         Creado por <span class="highlight">DX GAMES</span><br><br>
         Versión: <span class="highlight" id="ver"></span><br><br>
         ¡GRACIAS POR JUGAR!
+    </div>
+    <button class="menu-btn" onclick="showMain()">VOLVER</button>
+</div>
+
+<div id="howto-menu" class="ui-layer">
+    <h2 style="font-size:30px">CÓMO JUGAR</h2>
+    <div class="about-text" style="text-align:left;max-height:60vh;overflow-y:auto;padding:0 10px">
+        🎯 <b>Objetivo:</b> navega, encuentra tesoros, hunde barcos enemigos y hazte rico.<br><br>
+        ⛵ <b>Navegar:</b> toca el ancla ⚓ para zarpar. Las flechas giran el barco. Los botones 💣 disparan los cañones.<br><br>
+        🍾 <b>Ron:</b> se gasta mientras navegas. Sin ron, vas a medio gas. Cómpralo en las tabernas.<br><br>
+        🗺️ <b>Mapas:</b> te llevan a islas del tesoro. Cava y llévate el botín.<br><br>
+        ⚠️ <b>El Cazador:</b> si llevas mucho oro (6000+), te buscará. Huye o pelea.<br><br>
+        👻 <b>El Fantasma:</b> solo aparece de noche y no se puede escapar de él. Si lo hundes, gran botín.<br><br>
+        🌫️ <b>Noche de ultratumba:</b> una noche rara con luna verde y niebla. El Fantasma viene más fuerte... y con más botín.<br><br>
+        🗺️ <b>Mapa:</b> toca el minimapa para pausar y abrir el mapa. Toca un lugar para poner un destino.<br><br>
+        ⚓ <b>Puertos:</b> habla con la gente, escucha rumores (100G), compra ron, repara y mejora tu barco. Descansa para guardar la partida.<br><br>
+        💀 <b>Naufragios:</b> inspecciona los barcos hundidos: a veces hay botín... y a veces es una trampa.
     </div>
     <button class="menu-btn" onclick="showMain()">VOLVER</button>
 </div>
@@ -410,6 +429,7 @@ let enemies = [], rocks = [], islands = [], projectiles = [], wakeParticles = []
 let skirmishCD = 6000; // frames hasta buscar la proxima batalla entre barcos
 let destination = null; // destino marcado en el mapa {x, y} o null
 let pendingRumor = null, rumorMark = null; // rumor en pantalla y su marca X {x, y, fake}
+let visitedPorts = []; // puertos descubiertos (bonus primera visita)
 let seagulls = [];
 // IA de gaviotas: cada una cambia sola de estado con temporizador.
 // wander = a su antojo | flock = en parvada | follow = sigue el barco |
@@ -426,7 +446,7 @@ for (let i = 0; i < 60; i++) waves.push({ x: Math.random() * canvas.width, y: Ma
 const keys = { Left: false, Right: false };
 const $ = id => document.getElementById(id);
 const ui = {
-    mainMenu: $('main-menu'), settingsMenu: $('settings-menu'), aboutMenu: $('about-menu'), mapScreen: $('map-screen'),
+    mainMenu: $('main-menu'), settingsMenu: $('settings-menu'), aboutMenu: $('about-menu'), howtoMenu: $('howto-menu'), mapScreen: $('map-screen'),
     actionBtn: $('action-btn'), portScreen: $('port-screen'), controls: $('game-controls'), fireControls: $('fire-controls'),
     btnShootL: $('btn-shoot-l'), btnShootR: $('btn-shoot-r'), btnShootF: $('btn-shoot-f'), btnShootB: $('btn-shoot-b'),
     anchorBtn: $('btn-anchor'), resultScreen: $('result-screen'), portContent: $('port-content'), portTitle: $('port-title')
@@ -457,7 +477,7 @@ const isNight = () => darkness() > 0.6;
 // === GUARDADO ===
 function saveGame(silent) {
     const d = { gold: player.inventory.gold, rum: player.inventory.rum, spawnX: player.savedPos.x, spawnY: player.savedPos.y,
-        port: player.spawnPort, upgrades: player.upgrades, maps: player.mapCount, treasures: treasureSites, wrecks: wrecks, rumor: rumorMark };
+        port: player.spawnPort, upgrades: player.upgrades, maps: player.mapCount, treasures: treasureSites, wrecks: wrecks, rumor: rumorMark, visited: visitedPorts };
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(d)); } catch (e) {}
     if (!silent) showMsg("¡CHECKPOINT GUARDADO!", "#2ecc71");
 }
@@ -477,6 +497,7 @@ function loadGame() {
     treasureSites = Array.isArray(d.treasures) ? d.treasures : [];
     wrecks = Array.isArray(d.wrecks) ? d.wrecks : [];
     rumorMark = d.rumor && Number.isFinite(d.rumor.x) && Number.isFinite(d.rumor.y) ? d.rumor : null;
+    visitedPorts = Array.isArray(d.visited) ? d.visited : [];
     return true;
 }
 
@@ -494,8 +515,9 @@ function showHints() {
 }
 function showSettings() { hideAllMenus(); ui.settingsMenu.classList.add('visible'); }
 function showAbout() { hideAllMenus(); ui.aboutMenu.classList.add('visible'); }
+function showHowTo() { hideAllMenus(); ui.howtoMenu.classList.add('visible'); }
 function showMain() { hideAllMenus(); ui.mainMenu.classList.add('visible'); playMusic('menu'); }
-function hideAllMenus() { [ui.mainMenu, ui.settingsMenu, ui.aboutMenu, ui.mapScreen].forEach(e => e.classList.remove('visible')); }
+function hideAllMenus() { [ui.mainMenu, ui.settingsMenu, ui.aboutMenu, ui.howtoMenu, ui.mapScreen].forEach(e => e.classList.remove('visible')); }
 function toggleSetting(k) {
     settings[k] = !settings[k]; initAudio();
     const label = { music: 'MÚSICA', ambient: 'AMBIENTE', sound: 'SONIDO', vibrate: 'VIBRACIÓN' }[k];
@@ -503,6 +525,17 @@ function toggleSetting(k) {
     if (k === 'music' || k === 'ambient') updateAudioSettings();
     if (k === 'vibrate') vibrate(50);
     if (k === 'sound') sfx('coin');
+}
+// Borrar partida: dos toques para confirmar; borra el guardado y las pistas, y recarga
+let resetArmed = false;
+function resetSave() {
+    if (!resetArmed) {
+        resetArmed = true; $('btn-reset').innerText = '¿SEGURO? TOCA OTRA VEZ';
+        setTimeout(() => { resetArmed = false; const b = $('btn-reset'); if (b) b.innerText = '🗑️ BORRAR PARTIDA'; }, 4000);
+        return;
+    }
+    try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(HINT_KEY); } catch (e) {}
+    location.reload();
 }
 function vibrate(ms) { if (settings.vibrate && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) {} } }
 function closeDialog() { $('dialog-modal').style.display = 'none'; $('btn-dialog-accept').style.display = 'none'; pendingRumor = null; }
@@ -672,7 +705,7 @@ function updateProceduralSpawns() {
         if (Math.random() < p) {
             const a = ang();
             enemies.push({ x: player.gX + Math.cos(a) * 2400, y: player.gY + Math.sin(a) * 2400, angle: ang(), hp: 500, maxHp: 500, size: 25, type: 'hunter', reload: 50, canFlee: false, speed: 2.0 });
-            showMsg("¡EL CAZADOR!", "#c0392b");
+            showMsg("⚠️ ¡EL CAZADOR TE HA ENCONTRADO!", "#c0392b"); playMusic('hunter'); sfx('cannon');
         }
     }
     // EL FANTASMA: solo de noche, probabilidad muy baja, no se puede escapar
@@ -710,7 +743,7 @@ function updateProceduralSpawns() {
     }
     // LIMPIEZA: el Cazador te pierde si sale del radar; el Fantasma nunca se va
     const hunter = enemies.find(e => e.type === 'hunter');
-    if (hunter && dist(player.gX, player.gY, hunter.x, hunter.y) > CFG.radar) { hunterCD = CFG.cooldown; showMsg("El Cazador te perdió de vista", "#3498db"); }
+    if (hunter && dist(player.gX, player.gY, hunter.x, hunter.y) > CFG.radar) { hunterCD = CFG.cooldown; showMsg("El Cazador te perdió de vista", "#3498db"); if (ultratumba) playMusic('ghost'); else playDayNightMusic(); }
     enemies = enemies.filter(e => e.type === 'ghost' || dist(player.gX, player.gY, e.x, e.y) < (e.type === 'hunter' ? CFG.radar : 5000));
     rocks = rocks.filter(r => dist(player.gX, player.gY, r.x, r.y) < 4000);
     islands = islands.filter(i => dist(player.gX, player.gY, i.x, i.y) < 7000);
@@ -801,6 +834,11 @@ function endBattle(win, escaped, whoEscaped, gold = 0, rum = 0, maps = 0, winMsg
 }
 
 // === PUERTO / ASTILLERO ===
+// Precios segun el puerto: el ron es barato en los pueblitos y caro en las ciudades;
+// en los puertos chicos casi no hay astillero y la reparacion cuesta el doble;
+// solo en los puertos grandes venden mapas del tesoro.
+const portRumPrice = () => currentPort ? (currentPort.type === 'small' ? 8 : currentPort.type === 'big' ? 12 : 10) : 10;
+const portRepairPrice = () => currentPort && currentPort.type === 'small' ? 2 : 1;
 function renderPortMenu(screen, msg, col) {
     const U = CFG.upg, lv = player.upgrades;
     const stats = `<div class="port-stats">💰 ${player.inventory.gold} &nbsp;&nbsp; 🍾 ${player.inventory.rum}</div>`;
@@ -817,10 +855,11 @@ function renderPortMenu(screen, msg, col) {
             <div class="port-option" onclick="restInPort()"><span>🛌 Descansar (guardar)</span></div>
             <div class="port-option active" onclick="exitPort()"><span>⛵ ZARPAR</span></div>`;
     } else if (screen === 'tavern') {
-        h += say('"¿Una copa?"') + `<div class="port-option" onclick="buyRum()"><span>🥃 Comprar Ron (+5)</span><span>10G</span></div>
-            <div class="port-option active" onclick="renderPortMenu('main')"><span>🔙 Volver</span></div>`;
+        h += say('"¿Una copa?"') + `<div class="port-option" onclick="buyRum()"><span>🥃 Comprar Ron (+5)</span><span>${portRumPrice()}G</span></div>`
+            + (currentPort && currentPort.type === 'big' ? `<div class="port-option" onclick="buyMap()"><span>🗺️ Comprar mapa del tesoro</span><span>200G</span></div>` : '')
+            + `<div class="port-option active" onclick="renderPortMenu('main')"><span>🔙 Volver</span></div>`;
     } else if (screen === 'shipyard') {
-        const costRep = Math.floor(player.maxHp - player.hp);
+        const costRep = Math.floor((player.maxHp - player.hp) * portRepairPrice());
         h += say('"¿Mejoras?"') + `<div class="port-option" onclick="repairShip()"><span>🔨 Reparar</span><span>${costRep}G</span></div>`
             + row('sails', '🚩', 'Velas') + row('hull', '🛡️', 'Casco') + row('cannons', '💣', 'Cañón');
         if (!lv.frontCannon) h += `<div class="port-option" onclick="buyWeapon('front')"><span>🔴 Cañón Frontal</span><span>1000G</span></div>`;
@@ -841,12 +880,17 @@ function buyWeapon(pos) {
     sfx('coin'); renderPortMenu('shipyard', '¡Cañón instalado!', '#2ecc71');
 }
 function buyRum() {
-    if (player.inventory.gold < 10) return renderPortMenu('tavern', 'Oro insuficiente', '#e74c3c');
-    player.inventory.gold -= 10; player.inventory.rum += 5; sfx('coin'); renderPortMenu('tavern', '¡Ron!', '#2ecc71');
+    const p = portRumPrice();
+    if (player.inventory.gold < p) return renderPortMenu('tavern', 'Oro insuficiente', '#e74c3c');
+    player.inventory.gold -= p; player.inventory.rum += 5; sfx('coin'); renderPortMenu('tavern', '¡Ron!', '#2ecc71');
+}
+function buyMap() {
+    if (player.inventory.gold < 200) return renderPortMenu('tavern', 'Oro insuficiente', '#e74c3c');
+    player.inventory.gold -= 200; player.mapCount++; sfx('coin'); renderPortMenu('tavern', '¡Mapa comprado! Busca la X en tu minimapa', '#2ecc71');
 }
 function repairShip() {
     if (player.hp >= player.maxHp) return renderPortMenu('shipyard', 'Tu barco está intacto', '#f39c12');
-    const c = Math.floor(player.maxHp - player.hp);
+    const c = Math.floor((player.maxHp - player.hp) * portRepairPrice());
     if (player.inventory.gold < c) return renderPortMenu('shipyard', 'Oro insuficiente', '#e74c3c');
     player.inventory.gold -= c; player.hp = player.maxHp; sfx('coin'); renderPortMenu('shipyard', '¡Barco reparado!', '#2ecc71');
 }
@@ -911,7 +955,11 @@ function inspectWreck(w) {
 function enterPort(port) {
     currentPort = port; gameState = STATE.PORT; player.speed = 0; player.isSailing = false; ui.anchorBtn.classList.remove('sailing');
     ui.actionBtn.style.display = 'none'; currentAction = null; ui.controls.style.display = 'none'; ui.portScreen.classList.add('visible');
-    ui.portTitle.innerText = port.name; renderPortMenu('main');
+    ui.portTitle.innerText = port.name;
+    // Primera visita: bonus de descubrimiento
+    let first = false;
+    if (!visitedPorts.includes(port.name)) { visitedPorts.push(port.name); player.inventory.gold += 100; first = true; }
+    renderPortMenu('main', first ? `🎉 ¡Descubriste ${port.name}! +100 ORO` : undefined, '#f1c40f');
 }
 function exitPort() { ui.portScreen.classList.remove('visible'); ui.controls.style.display = 'flex'; gameState = STATE.ROAMING; }
 
@@ -989,7 +1037,7 @@ function update() {
             // Al amanecer, el Fantasma se desvanece (regla general, no solo del evento)
             if (!n) { const gi = enemies.findIndex(e => e.type === 'ghost'); if (gi >= 0) { enemies.splice(gi, 1); showMsg("👻 El Fantasma se desvanece con el amanecer", "#2ecc71"); } }
         }
-        if (player.isSailing && ++player.rumConsumptionTimer > 1800) { if (player.inventory.rum > 0) player.inventory.rum--; player.rumConsumptionTimer = 0; }
+        if (player.isSailing && ++player.rumConsumptionTimer > 1800) { if (player.inventory.rum > 0) { player.inventory.rum--; if (player.inventory.rum === 0) showMsg("🍾 ¡Te quedaste sin ron! Vas a medio gas", "#e67e22"); } player.rumConsumptionTimer = 0; }
     }
 
     if (gameState === STATE.ROAMING || gameState === STATE.BATTLE) {
